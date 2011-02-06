@@ -295,16 +295,16 @@ Gem version specification:
 Options:
 }
 
-      opts.on('--trace', :NONE, 'Show a full traceback on error') do
-        @options[:trace] = true
-      end
-
       opts.on('-d DIR', '--destdir DIR', String, 'Destination directory for package files') do |dir|
         @options[:destdir] = dir
       end
 
       opts.on('-n', '--noinstall', :NONE, 'Do not install package files') do
         @options[:noinstall] = true
+      end
+
+      opts.on('--trace', :NONE, 'Show a full traceback on error') do
+        @options[:trace] = true
       end
 
       opts.on_tail('-h', '--help', 'Show this message') do
