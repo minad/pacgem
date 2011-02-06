@@ -7,15 +7,72 @@ require 'shellwords'
 require 'open-uri'
 require 'digest/sha2'
 
-module Pacgem
+module PacGem
   module Util
     def which?(name)
-      `which #{name}`
+      `which #{name} 2>/dev/null`
       $?.success?
     end
 
     def spew(file, content)
       File.open(file, 'w') {|f| f.write(content) }
+    end
+
+    COLORS = {
+      clear:         0,
+      bold:          1,
+      dark:          2,
+      italic:        3, # not widely implemented
+      underline:     4,
+      blink:         5,
+      rapid_blink:   6, # not widely implemented
+      reverse:       7,
+      concealed:     8,
+      strikethrough: 9, # not widely implemented
+      black:         30,
+      red:           31,
+      green:         32,
+      yellow:        33,
+      blue:          34,
+      magenta:       35,
+      cyan:          36,
+      white:         37,
+      bg_black:      40,
+      bg_red:        41,
+      bg_green:      42,
+      bg_yellow:     43,
+      bg_blue:       44,
+      bg_magenta:    45,
+      bg_cyan:       46,
+      bg_white:      47,
+    }
+
+    def color(s, *c)
+      if STDOUT.isatty
+        c.inject('') {|x,c| "#{x}\e[#{COLORS[c]}m" } + "#{s}\e[0m"
+      else
+        s
+      end
+    end
+
+    def info(s)
+      puts(color('==> ', :green, :bold) + color(s, :bold))
+    end
+
+    def warn(s)
+      puts(color('==> WARNING: ', :yellow, :bold) + color(s, :bold))
+    end
+
+    def error(s)
+      puts(color('==> ERROR: ', :red, :bold) + color(s, :bold))
+    end
+
+    def alert(s)
+      puts(color('==> ', :red, :bold, :blink) + color(s, :bold))
+    end
+
+    def subinfo(s)
+      puts(color('  -> ', :blue, :bold) + color(s, :bold))
     end
 
     extend self
@@ -51,7 +108,6 @@ module Pacgem
     def download
       @gemfile = "#{@gemname}-#{@version}.gem"
       IO.copy_stream(open("#{@uri}gems/#{@gemfile}"), File.open(@gemfile, 'w'))
-      puts "Downloaded #{@gemfile}"
     end
 
     def build
@@ -62,13 +118,17 @@ module Pacgem
 
     def check
       if which?('namcap')
-        puts "Checking #{@pkgfile} with namcap..."
-        `namcap #{@pkgfile} 1>&2`
+        info "Checking #{@pkgfile} with namcap..."
+        `namcap #{@pkgfile}`.each_line do |line|
+          subinfo(line.chomp)
+        end
+      else
+        warn "namcap is not installed"
       end
     end
 
     def system_install
-      puts "Installing #{@pkgfile} with pacman..."
+      alert "Installing #{@pkgfile} with pacman..."
       `sudo pacman --as#{@explicit ? 'explicit' : 'deps'} -U #{@pkgfile.shellescape}`
     end
 
@@ -110,9 +170,7 @@ build() {
   [ -d "$pkgdir$_gemdir/bin" ]  && find "$pkgdir$_gemdir/bin" -type f -exec chmod 755 '{}' ';'
   [ -d "$pkgdir$_gemdir/gems" ] && find "$pkgdir$_gemdir/gems" -name '*.o' -exec rm -f '{}' ';'
   rm -f "$pkgdir$_gemdir/cache/$_gemname-$pkgver.gem"
-  rmdir "$pkgdir$_gemdir/bin"   || true
-  rmdir "$pkgdir$_gemdir/cache" || true
-  rmdir "$pkgdir$_gemdir/doc"   || true
+  find "$pkgdir$_gemdir" -depth -type d -empty -exec rmdir '{}' ';'
 }
 }
       spew('PKGBUILD', pkgbuild)
@@ -120,6 +178,8 @@ build() {
   end
 
   class Installer
+    include Util
+
     def initialize()
       @order = []
       @packages = {}
@@ -138,9 +198,10 @@ build() {
 
     def resolve_dep(dep, explicit)
       @packages[dep.name] ||= begin
-        puts "Resolving gem #{dep}..."
+        info "Resolving Gem #{dep}..."
         spec, uri = Gem::SpecFetcher.fetcher.fetch(dep, true).last
-        raise "Gem #{name} not found" if !spec
+        raise "Gem #{dep} not found" if !spec
+        subinfo(spec.full_name)
         spec.runtime_dependencies.each {|dep| resolve_dep(dep, false) }
         Package.new(dep.name, spec.version, uri, explicit).tap {|pkg| @order << pkg }
       end
@@ -153,7 +214,12 @@ build() {
       exit
     end
 
-    raise 'Must not be root' if Process.uid == 0
+    raise 'You must not be root to run pacgem!' if Process.uid == 0
+
+    trap :SIGINT do
+      Util.error 'Aborted by user! Exiting...'
+      exit
+    end
 
     Dir.mktmpdir('pacgem-') do |tmp|
       Dir.chdir(tmp) do
@@ -163,9 +229,9 @@ build() {
       end
     end
   rescue => ex
-    puts ex.message
+    Util.error ex.message
     exit 1
   end
 end
 
-Pacgem.run(ARGV) if $0 == __FILE__
+PacGem.run(ARGV) if $0 == __FILE__
