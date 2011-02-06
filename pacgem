@@ -6,8 +6,9 @@ require 'rubygems/format'
 require 'shellwords'
 require 'open-uri'
 require 'digest/sha2'
+require 'optparse'
 
-module PacGem
+module Pacgem
   module Util
     def which?(name)
       `which #{name} 2>/dev/null`
@@ -190,7 +191,7 @@ build() {
       @order.each {|pkg| pkg.install }
     end
 
-    def resolve(name, version)
+    def resolve(name, version = nil)
       resolve_dep(Gem::Dependency.new(name, version), true)
     end
 
@@ -201,37 +202,89 @@ build() {
         info "Resolving Gem #{dep}..."
         spec, uri = Gem::SpecFetcher.fetcher.fetch(dep, true).last
         raise "Gem #{dep} not found" if !spec
-        subinfo(spec.full_name)
+        subinfo("#{spec.full_name}: #{spec.summary}")
         spec.runtime_dependencies.each {|dep| resolve_dep(dep, false) }
         Package.new(dep.name, spec.version, uri, explicit).tap {|pkg| @order << pkg }
       end
     end
   end
 
-  def self.run(args)
-    if args.length < 1
-      puts "Usage: #{$0} gem-name [gem-version]"
-      exit
+  class Command
+    include Util
+
+    def initialize(args)
+      @args = args
+      @options = {}
     end
 
-    raise 'You must not be root to run pacgem!' if Process.uid == 0
-
-    trap :SIGINT do
-      Util.error 'Aborted by user! Exiting...'
-      exit
+    def run
+      @opts = OptionParser.new(&method(:set_opts))
+      @opts.parse!(@args)
+      process
+      exit 0
+    rescue Exception => ex
+      raise ex if @options[:trace] || SystemExit === ex
+      error ex.message
+      subinfo 'Use --trace for backtrace.'
+      exit 1
     end
 
-    Dir.mktmpdir('pacgem-') do |tmp|
-      Dir.chdir(tmp) do
-        installer = Installer.new
-        installer.resolve(args[0], args[1])
-        installer.install
+    private
+
+    def process
+      if @args.length < 1
+        puts @opts
+        exit
+      end
+
+      raise 'You must not be root to run pacgem!' if Process.uid == 0
+
+      trap :SIGINT do
+        Util.error 'Aborted by user! Exiting...'
+        exit
+      end
+
+      Dir.mktmpdir('pacgem-') do |tmp|
+        Dir.chdir(tmp) do
+          installer = Installer.new
+          @args.each do |gem|
+            if gem =~ /^([-\w]+)((?:[<>]=?|=|~>|-)\d+(?:\.\d+)*)?$/
+              name, version = $1, $2
+              installer.resolve(name, version =~ /^-/ ? version[1..-1] : version)
+            else
+              installer.resolve(gem)
+            end
+          end
+          installer.install
+        end
       end
     end
-  rescue => ex
-    Util.error ex.message
-    exit 1
+
+    def set_opts(opts)
+      opts.banner = 'Usage: pacgem [options] gems...'
+
+      opts.separator %q{
+Pacgem installs Ruby Gems using the Arch Linux Package Manager (pacman).
+
+Gem version specification:
+    pacgem rack
+    pacgem rack-1.0
+    pacgem 'rack>1.0'
+    pacgem thin 'rack~>1.0'
+
+Options:
+}
+
+      opts.on('--trace', :NONE, 'Show a full traceback on error') do
+        @options[:trace] = true
+      end
+
+      opts.on_tail('-h', '--help', 'Show this message') do
+        puts opts
+        exit
+      end
+    end
   end
 end
 
-PacGem.run(ARGV) if $0 == __FILE__
+Pacgem::Command.new(ARGV).run if $0 == __FILE__
