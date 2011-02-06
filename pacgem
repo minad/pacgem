@@ -248,12 +248,6 @@ build() {
         exit
       end
 
-      if @options[:noinstall] && !@options[:destdir]
-        puts 'You must specify a destination directory.'
-        puts @opts
-        exit
-      end
-
       if @options[:destdir]
         dir = File.expand_path(@options[:destdir])
         FileUtils.mkpath(dir)
@@ -286,11 +280,11 @@ build() {
       opts.separator %q{
 Pacgem installs Ruby Gems using the Arch Linux Package Manager (pacman).
 
-Gem version specification:
-    pacgem rack
-    pacgem rack-1.0
-    pacgem 'rack>1.0'
-    pacgem thin 'rack~>1.0'
+Examples:
+    pacgem --noinstall rack    Create ruby-rack package in the directory ./ruby-rack
+    pacgem rack-1.0            Create temporary ruby-rack package and install it
+    pacgem 'rack>1.0'          Different version specification
+    pacgem thin 'rack~>1.0'    Different version specification
 
 Options:
 }
@@ -301,6 +295,7 @@ Options:
 
       opts.on('-n', '--noinstall', :NONE, 'Do not install package files') do
         @options[:noinstall] = true
+        @options[:destdir] = Dir.pwd
       end
 
       opts.on('--trace', :NONE, 'Show a full traceback on error') do
