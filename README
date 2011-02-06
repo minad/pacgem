@@ -1,0 +1,10 @@
+pacgem - Gem installer for Arch Linux
+=====================================
+
+Usage: pacgem gem-name [gem-version]
+
+pacgem downloads the gemspec, creates a temporary pkgbuild, calls makepkg and finally
+installs the resulting package.
+
+Credits:
+  Based on gem2arch by crabtw (https://github.com/crabtw/abs-tree/tree/master/gem2arch-ruby)

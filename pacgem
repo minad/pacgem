@@ -65,10 +65,6 @@ build() {
 }
 end
 
-def spew(name, content)
-  File.open(name, 'w') {|f| f.write(content) }
-end
-
 def install_package(name, version, explicit = true)
   spec = download_spec(name, version)
   name = "ruby-#{spec.name}"
@@ -79,7 +75,7 @@ def install_package(name, version, explicit = true)
   else
     depends = get_depends(spec)
     depends.each {|n, v| install_package(n, v, false) }
-    spew('PKGBUILD', generate_pkgbuild(spec, depends))
+    File.open('PKGBUILD', 'w') {|f| f.write generate_pkgbuild(spec, depends) }
     `makepkg --skipinteg`
     pkgfile = Dir["#{full_name}-*.pkg.*"].first
     raise "makepkg #{full_name} failed" if !pkgfile
