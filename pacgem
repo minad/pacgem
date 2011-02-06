@@ -25,7 +25,7 @@ def get_depends(spec)
   depends
 end
 
-def generate_pkgbuild(spec, depends)
+def generate_pkgbuild(uri, spec, depends)
   depends = %w(ruby) + depends.map do |name,version|
     version.sub!(/^~>/, '>=')
     "ruby-#{name}#{version}"
@@ -47,7 +47,7 @@ url=#{spec.homepage.inspect}
 license=(#{license.inspect})
 depends=(#{depends.map(&:inspect).join(' ')})
 makedepends=('rubygems')
-source=(http://rubygems.org/gems/$_gemname-$pkgver.gem)
+source=(#{uri}gems/$_gemname-$pkgver.gem)
 sha256sums=(#{digest})
 noextract=($_gemname-$pkgver.gem)
 build() {
@@ -90,15 +90,13 @@ def install_package(name, version, explicit = true)
     Dir.mkdir(name)
 
     gem_name = "#{spec.full_name}.gem"
-    File.open(File.join(name, gem_name), 'w') do |f|
-      IO.copy_stream(open("#{uri}gems/#{gem_name}"), f)
-    end
+    IO.copy_stream(open("#{uri}gems/#{gem_name}"), File.open(File.join(name, gem_name), 'w'))
     puts "Downloaded #{gem_name}"
 
     Dir.chdir(name) do
       spec = Gem::Format.from_file_by_path(gem_name).spec
 
-      spew('PKGBUILD', generate_pkgbuild(spec, depends))
+      spew('PKGBUILD', generate_pkgbuild(uri, spec, depends))
       `makepkg`
       pkgfile = Dir["#{full_name}-*.pkg.*"].first
       raise "makepkg #{full_name} failed" if !pkgfile
