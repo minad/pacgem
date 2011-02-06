@@ -7,6 +7,7 @@ require 'shellwords'
 require 'open-uri'
 require 'digest/sha2'
 require 'optparse'
+require 'fileutils'
 
 module Pacgem
   module Util
@@ -88,14 +89,16 @@ module Pacgem
       @version, @uri, @explicit = version, uri, explicit
     end
 
-    def install
+    def install(noinstall = false)
       Dir.mkdir(@name)
       Dir.chdir(@name) do
         download
-        generate_pkgbuild
-        build
-        check
-        system_install
+        gen_pkgbuild
+        makepkg(noinstall)
+        unless noinstall
+          namcap
+          pacman_install
+        end
       end
     end
 
@@ -111,13 +114,13 @@ module Pacgem
       IO.copy_stream(open("#{@uri}gems/#{@gemfile}"), File.open(@gemfile, 'w'))
     end
 
-    def build
-      `makepkg`
+    def makepkg(nodeps)
+      `makepkg #{nodeps && '--nodeps'}`
       @pkgfile = Dir["#{@name}-*.pkg.*"].first
-      raise "makepkg #{@name} failed" if !@pkgfile
+      raise "makepkg #{@name} failed" unless @pkgfile
     end
 
-    def check
+    def namcap
       if which?('namcap')
         info "Checking #{@pkgfile} with namcap..."
         `namcap #{@pkgfile}`.each_line do |line|
@@ -128,12 +131,12 @@ module Pacgem
       end
     end
 
-    def system_install
+    def pacman_install
       alert "Installing #{@pkgfile} with pacman..."
       `sudo pacman --as#{@explicit ? 'explicit' : 'deps'} -U #{@pkgfile.shellescape}`
     end
 
-    def generate_pkgbuild
+    def gen_pkgbuild
       spec = Gem::Format.from_file_by_path(@gemfile).spec
 
       depends = %w(ruby)
@@ -181,14 +184,15 @@ build() {
   class Installer
     include Util
 
-    def initialize()
+    def initialize(options)
+      @options = options
       @order = []
       @packages = {}
     end
 
     def install
       @order.reject! {|pkg| pkg.installed? }
-      @order.each {|pkg| pkg.install }
+      @order.each {|pkg| pkg.install(@options[:noinstall]) }
     end
 
     def resolve(name, version = nil)
@@ -201,7 +205,7 @@ build() {
       @packages[dep.name] ||= begin
         info "Resolving Gem #{dep}..."
         spec, uri = Gem::SpecFetcher.fetcher.fetch(dep, true).last
-        raise "Gem #{dep} not found" if !spec
+        raise "Gem #{dep} not found" unless spec
         subinfo("#{spec.full_name}: #{spec.summary}")
         spec.runtime_dependencies.each {|dep| resolve_dep(dep, false) }
         Package.new(dep.name, spec.version, uri, explicit).tap {|pkg| @order << pkg }
@@ -244,9 +248,23 @@ build() {
         exit
       end
 
-      Dir.mktmpdir('pacgem-') do |tmp|
-        Dir.chdir(tmp) do
-          installer = Installer.new
+      if @options[:noinstall] && !@options[:destdir]
+        puts 'You must specify a destination directory.'
+        puts @opts
+        exit
+      end
+
+      if @options[:destdir]
+        dir = File.expand_path(@options[:destdir])
+        FileUtils.mkpath(dir)
+        info "Saving package files in #{dir}"
+      else
+        dir = Dir.mktmpdir('pacgem-')
+      end
+
+      begin
+        Dir.chdir(dir) do
+          installer = Installer.new(@options)
           @args.each do |gem|
             if gem =~ /^([-\w]+)((?:[<>]=?|=|~>|-)\d+(?:\.\d+)*)?$/
               name, version = $1, $2
@@ -257,6 +275,8 @@ build() {
           end
           installer.install
         end
+      ensure
+        FileUtils.remove_entry_secure(dir) unless @options[:destdir]
       end
     end
 
@@ -277,6 +297,14 @@ Options:
 
       opts.on('--trace', :NONE, 'Show a full traceback on error') do
         @options[:trace] = true
+      end
+
+      opts.on('-d DIR', '--destdir DIR', String, 'Destination directory for package files') do |dir|
+        @options[:destdir] = dir
+      end
+
+      opts.on('-n', '--noinstall', :NONE, 'Do not install package files') do
+        @options[:noinstall] = true
       end
 
       opts.on_tail('-h', '--help', 'Show this message') do
