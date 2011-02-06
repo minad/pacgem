@@ -20,6 +20,11 @@ module Pacgem
       File.open(file, 'w') {|f| f.write(content) }
     end
 
+    def truncate(s, max, omission = '...')
+      s = s.to_s
+      s.length > max ? s[0...max] + omission : s
+    end
+
     COLORS = {
       clear:         0,
       bold:          1,
@@ -90,7 +95,7 @@ module Pacgem
     end
 
     def install(noinstall = false)
-      Dir.mkdir(@name)
+      FileUtils.mkpath(@name)
       Dir.chdir(@name) do
         download
         gen_pkgbuild
@@ -121,7 +126,7 @@ module Pacgem
     end
 
     def makepkg(nodeps)
-      `makepkg #{nodeps && '--nodeps'}`
+      `makepkg -f #{nodeps && '--nodeps'}`
       @pkgfile = Dir["#{@name}-*.pkg.*"].first
       raise "makepkg #{@name} failed" unless @pkgfile
     end
@@ -153,6 +158,12 @@ module Pacgem
         end
       end
 
+      optdepends = []
+      spec.development_dependencies.each do |dep|
+        optspec, opturi = Gem::SpecFetcher.fetcher.fetch(dep, true).last
+        optdepends << "ruby-#{dep.name.downcase}: #{truncate(optspec.summary, 80)}" if optspec
+      end
+
       digest = Digest::SHA2.file(@gemfile).to_s
       license = spec.license || 'Ruby'
       arch = spec.extensions.empty? ? %w(any) : %w(i686 x86_64)
@@ -166,11 +177,13 @@ pkgdesc=#{spec.summary.inspect}
 arch=(#{arch.map(&:inspect).join(' ')})
 url=#{spec.homepage.inspect}
 license=(#{license.inspect})
-depends=(#{depends.map(&:inspect).join(' ')})
+depends=(#{depends.map(&:inspect).join("\n         ")})
+optdepends=(#{optdepends.map(&:inspect).join("\n            ")})
 makedepends=('rubygems')
 source=(#{@uri}gems/$_gemname-$pkgver.gem)
 sha256sums=(#{digest})
 noextract=($_gemname-$pkgver.gem)
+
 build() {
   cd $srcdir
   # _gemdir is defined inside build() because if ruby[gems] is not installed on the system
