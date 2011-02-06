@@ -126,7 +126,7 @@ module Pacgem
     end
 
     def makepkg(nodeps)
-      `makepkg -f #{nodeps && '--nodeps'}`
+      system("makepkg -f #{nodeps && '--nodeps'}")
       @pkgfile = Dir["#{@name}-*.pkg.*"].first
       raise "makepkg #{@name} failed" unless @pkgfile
     end
@@ -144,7 +144,7 @@ module Pacgem
 
     def pacman_install
       alert "Installing #{@pkgfile} with pacman..."
-      `sudo pacman --as#{@explicit ? 'explicit' : 'deps'} -U #{@pkgfile.shellescape}`
+      system("sudo pacman --as#{@explicit ? 'explicit' : 'deps'} -U #{@pkgfile.shellescape}")
     end
 
     def gen_pkgbuild
@@ -186,13 +186,24 @@ noextract=($_gemname-$pkgver.gem)
 
 build() {
   cd $srcdir
+
   # _gemdir is defined inside build() because if ruby[gems] is not installed on the system
   #  makepkg will barf when sourcing the PKGBUILD
   local _gemdir=`gem environment gemdir`
+
+  # Install the gem
   gem install --no-ri --no-rdoc --ignore-dependencies -n "$pkgdir/usr/bin" -i "$pkgdir$_gemdir" $_gemname-$pkgver.gem
+
+  # Set mode of executables to 755
   [ -d "$pkgdir$_gemdir/bin" ]  && find "$pkgdir$_gemdir/bin" -type f -exec chmod 755 '{}' ';'
+
+  # Remove build leftovers
   [ -d "$pkgdir$_gemdir/gems" ] && find "$pkgdir$_gemdir/gems" -name '*.o' -exec rm -f '{}' ';'
+
+  # Remove cached gem file
   rm -f "$pkgdir$_gemdir/cache/$_gemname-$pkgver.gem"
+
+  # Remove empty directories
   find "$pkgdir$_gemdir" -depth -type d -empty -exec rmdir '{}' ';'
 }
 }
