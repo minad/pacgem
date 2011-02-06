@@ -1,10 +1,35 @@
-pacgem - Gem installer for Arch Linux
-=====================================
+NAME
+       pacgem - Install Ruby Gems using the Arch Linux Package Manager (pacman)
 
-Usage: pacgem gem-name [gem-version]
+SYNOPSIS
+       pacgem [options] gems...
 
-pacgem downloads the gemspec, creates a temporary pkgbuild, calls makepkg and finally
-installs the resulting package.
+DESCRIPTION
+       Pacgem  allows  direct  installation  of  ruby gems under Arch Linux.  It generates a temporary PKGBUILD which is converted to a
+       package file.  The package file is installed using `sudo pacman`.
 
-Credits:
-  Based on gem2arch by crabtw (https://github.com/crabtw/abs-tree/tree/master/gem2arch-ruby)
+       -d, --destdir DIR
+              Destination directory for package files
+
+       -n, --noinstall
+              Do not install package files
+
+       --trace
+              Show a full traceback on error
+
+       -h, --help
+              Show help message
+
+EXAMPLES
+       pacgem --noinstall rack    Create ruby-rack package in the directory ./ruby-rack
+
+       pacgem rack-1.0            Create temporary ruby-rack package and install it
+
+       pacgem 'rack>1.0'          Different version specification
+
+       pacgem thin 'rack~>1.0'    Different version specification
+
+AUTHOR
+       Daniel Mendler (mail at daniel-mendler.de)
+
+Based on gem2arch by crabtw (https://github.com/crabtw/abs-tree/tree/master/gem2arch-ruby)
