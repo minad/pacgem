@@ -205,6 +205,21 @@ build() {
 
   # Remove empty directories
   find "$pkgdir$_gemdir" -depth -type d -empty -exec rmdir '{}' ';'
+
+  # Add missing dependencies
+  for _so in `find "$pkgdir$_gemdir" -type f -name '*.so'`; do
+    for _dep in `readelf -d $_so | sed '/library:/!d;s/.*library: \\[\\(.*\\)\\].*/\\1/'`; do
+      _pkg=`pacman -Qqo /lib/$_dep /usr/lib/$_dep 2>/dev/null || true`
+      _found=0
+      for _i in ${depends[@]}; do
+        [ "$_i" == "$_pkg" ] && _found=1
+      done
+      if [ "$_found" -eq "0" ]; then
+        msg "Additional dependency: $_dep provided by $_pkg"
+        depends=(${depends[@]} $_pkg)
+      fi
+    done
+  done
 }
 }
       spew('PKGBUILD', pkgbuild)
