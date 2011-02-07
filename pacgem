@@ -187,7 +187,7 @@ module Pacgem
       pkg['arch']        = spec.extensions.empty? ? %w(any) : %w(i686 x86_64)
       pkg['url']         = spec.homepage
       pkg['license']     = [spec.license || 'Ruby']
-      pkg['makedepends'] = %w(rubygems)
+      pkg['makedepends'] = %w(rubygems binutils sed findutils)
       pkg['depends']     = depends
       pkg['optdepends']  = optdepends
       pkg['source']      = ["#{@uri}gems/$_gemname-$pkgver.gem"]
@@ -368,13 +368,37 @@ _fix_gem() {
   find "$pkgdir" -type f '!' -perm '-004' -exec chmod o+r '{}' ';'
 }
 
+# Check if list includes element
+_includes_not() {
+  local elem=$1
+  shift
+  for i; do [ "$i" = "$elem" ] && return 1; done
+  return 0
+}
+
+# Check if dependency is already satisfied
+_dependency_satisfied() {
+  local dep=$1 deps="${depends[@]}"
+  while true; do
+    _includes_not $dep ${deps[@]} || return 0
+    local found=0 pkg
+    # Warning: This could break easily if the pacman output format changes.
+    for pkg in $(pacman -Qi ${deps[@]} 2>/dev/null | sed '/Depends/!d;s/.*: //;s/None\|>=[^ ]*//g'); do
+      _includes_not $pkg ${deps[@]} && deps=(${deps[@]} $pkg) && found=1
+    done
+    [ $found -eq 1 ] || break
+  done
+  return 1
+}
+
 _auto_depends() {
   msg 'Automatic dependency resolution...'
 
   # Find all referenced shared libraries
-  local deps=$(find "$pkgdir" -type f -name '*.so' -print0 |\
-               xargs -0 readelf -d |\
-               sed '/library:/!d;s/.*library: \[\(.*\)\].*/\1/')
+  local deps=$(find "$pkgdir" -type f -name '*.so')
+  [ "$deps" != '' ] || return 0
+
+  deps=$(readelf -d $deps | sed '/library:/!d;s/.*library: \[\(.*\)\].*/\1/')
 
   # Find referenced libraries on the library search path
   local libs=() lib path
@@ -383,6 +407,7 @@ _auto_depends() {
       [ -f "$path/$lib" ] && libs=(${libs[@]} "$path/$lib")
     done
   done
+  [ "${#libs}" -ne 0 ] || return 0
 
   msg2 "Referenced libraries: ${libs[*]}"
 
@@ -390,11 +415,7 @@ _auto_depends() {
   # and add them to the depends array
   local pkg
   for pkg in $(pacman -Qqo ${libs[@]}); do
-    local found=0 i
-    for i in ${depends[@]}; do
-      [ "$i" == "$pkg" ] && found=1
-    done
-    [ "$found" -eq "0" ] && depends=(${depends[@]} $pkg)
+    _dependency_satisfied $pkg || depends=(${depends[@]} $pkg)
   done
   msg2 "Referenced packages: ${depends[*]}"
 }
