@@ -147,7 +147,7 @@ module Pacgem
 
     def initialize(name, version, uri)
       @gemname = name
-      @name = "ruby-#{name.downcase}"
+      @name = "#{Package.ruby}-#{name.downcase}"
       @version, @uri = version, uri
     end
 
@@ -173,6 +173,16 @@ module Pacgem
 
     private
 
+    def self.ruby
+      @ruby ||= if RUBY_VERSION > '1.9'
+                    'ruby'
+                  elsif Gem.ruby.include?('ruby-enterprise')
+                    'ruby-enterprise'
+                  else
+                    'ruby1.8'
+                  end
+    end
+
     def download
       gemfile = "#{gemname}-#{version}.gem"
       open("#{uri}gems/#{gemfile}") do |i|
@@ -186,18 +196,18 @@ module Pacgem
     def gen_pkgbuild(gemfile, options)
       spec = Gem::Format.from_file_by_path(gemfile).spec
 
-      depends = %w(ruby)
+      depends = [Package.ruby]
       spec.runtime_dependencies.each do |dep|
         dep.requirement.requirements.each do |comp, ver|
           comp = '>=' if comp == '~>'
-          depends << "ruby-#{dep.name.downcase}#{comp}#{ver}"
+          depends << "#{Package.ruby}-#{dep.name.downcase}#{comp}#{ver}"
         end
       end
 
       optdepends = []
       spec.development_dependencies.each do |dep|
         optspec, opturi = Gem::SpecFetcher.fetcher.fetch(dep, true).last
-        optdepends << "ruby-#{dep.name.downcase}: #{truncate(optspec.summary, 80)}" if optspec
+        optdepends << "#{Package.ruby}-#{dep.name.downcase}: #{truncate(optspec.summary, 80)}" if optspec
       end
 
       builder = %w(build fix)
@@ -209,6 +219,8 @@ module Pacgem
       pkg = PkgBuild.new
       pkg['_gemname']    = spec.name
       pkg['_gembuilder'] = builder
+      pkg['_ruby']       = Gem.ruby
+      pkg['_gem']        = File.join(File.dirname(Gem.ruby), 'gem')
       pkg['pkgname']     = name
       pkg['pkgver']      = spec.version.to_s
       pkg['pkgrel']      = 1
@@ -216,10 +228,10 @@ module Pacgem
       pkg['arch']        = spec.extensions.empty? ? %w(any) : %w(i686 x86_64)
       pkg['url']         = spec.homepage
       pkg['license']     = [spec.license || 'Ruby']
-      pkg['makedepends'] = %w(rubygems binutils sed findutils)
+      pkg['makedepends'] = %W(#{Package.ruby} binutils sed findutils)
       pkg['depends']     = depends
       pkg['optdepends']  = optdepends
-      pkg['source']      = ["#{uri}gems/$_gemname-$pkgver.gem"]
+      pkg['source']      = %W(#{uri}gems/$_gemname-$pkgver.gem)
       pkg['sha256sums']  = [Digest::SHA2.file(gemfile).to_s]
       pkg['noextract']   = %w($_gemname-$pkgver.gem)
       pkg['options']     = %w(!emptydirs)
@@ -270,7 +282,7 @@ module Pacgem
         spec, uri = Gem::SpecFetcher.fetcher.fetch(dep, true).last
         raise "Gem #{dep} not found" unless spec
         @logger.msg2 "#{spec.full_name}: #{spec.summary}"
-        spec.runtime_dependencies.each {|dep| resolve_dep(dep) }
+        spec.runtime_dependencies.each {|d| resolve_dep(d) }
         pkg = Package.new(dep.name, spec.version, uri)
         @list << pkg
         pkg
@@ -396,8 +408,9 @@ _gem_build() {
   msg 'Installing gem...'
 
   # Install the gem
-  mkdir -p "$pkgdir/usr/bin" "$_gemdir"
-  gem install --no-ri --no-rdoc --ignore-dependencies -n "$pkgdir/usr/bin" -i "$_gemdir" "$srcdir/$_gemname-$pkgver.gem"
+  mkdir -p $_bindir $_gemdir
+  $_gem install --no-ri --no-rdoc --ignore-dependencies \
+                --bindir $_bindir --install-dir $_gemdir "$srcdir/$_gemname-$pkgver.gem"
 }
 
 _gem_fix() {
@@ -406,18 +419,18 @@ _gem_fix() {
   # Set mode of executables to 755
   [ -d "$_gemdir/bin" ] && find "$_gemdir/bin" -type f -exec chmod 755 '{}' ';'
 
-  # Find man pages and move them to usr/share
+  # Find man pages and move them to the correct directory
   local mandir="$_gemdir/gems/$_gemname-$pkgver/man"
   if [ -d "$mandir" ]; then
-    mkdir -p "$pkgdir/usr/share"
-    mv "$mandir" "$pkgdir/usr/share"
+    mkdir -p $_mandir
+    mv $mandir/* $_mandir
   fi
 
   # Remove cached gem file
   rm -f "$_gemdir/cache/$_gemname-$pkgver.gem"
 
   # Sometimes there are files which are not world readable. Fix this.
-  find "$pkgdir" -type f '!' -perm '-004' -exec chmod o+r '{}' ';'
+  find $pkgdir -type f '!' -perm '-004' -exec chmod o+r '{}' ';'
 }
 
 _gem_cleanext() {
@@ -453,7 +466,7 @@ _gem_autodepends() {
   msg 'Automatic dependency resolution...'
 
   # Find all referenced shared libraries
-  local deps=$(find "$pkgdir" -type f -name '*.so')
+  local deps=$(find $pkgdir -type f -name '*.so')
   [ "$deps" != '' ] || return 0
 
   deps=$(readelf -d $deps | sed '/library:/!d;s/.*library: \[\(.*\)\].*/\1/' | sort | uniq)
@@ -478,11 +491,17 @@ _gem_autodepends() {
   msg2 "Referenced packages: ${depends[*]}"
 }
 
+_rbconfig() {
+  $_ruby -e "require 'rbconfig'; puts RbConfig::CONFIG['$1']"
+}
+
 build() {
-  # gemdir is defined inside build() because if ruby[gems] is not installed on the system
+  # Directories defined inside build() because if ruby is not installed on the system
   # makepkg will barf when sourcing the PKGBUILD
-  _gemdir="$pkgdir$(gem environment gemdir)"
+  _gemdir=$pkgdir$($_gem environment gemdir)
+  _bindir=$pkgdir$(_rbconfig bindir)
+  _mandir=$pkgdir$(_rbconfig mandir)
 
   local i
-  for i in ${_gembuilder[@]}; do _gem_$i "$_gemdir"; done
+  for i in ${_gembuilder[@]}; do _gem_$i $_gemdir; done
 }
