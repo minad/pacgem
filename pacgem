@@ -350,6 +350,7 @@ _gem_build() {
   msg 'Installing gem...'
 
   # Install the gem
+  mkdir -p "$pkgdir/usr/bin" "$_gemdir"
   gem install --no-ri --no-rdoc --ignore-dependencies -n "$pkgdir/usr/bin" -i "$_gemdir" "$srcdir/$_gemname-$pkgver.gem"
 }
 
@@ -376,7 +377,7 @@ _gem_fix() {
 _gem_cleanext() {
   msg 'Removing native build leftovers...'
   local extdir="$_gemdir/gems/$_gemname-$pkgver/ext"
-  [ -d "$extdir" ] && find "$extdir" '(' -name '*.o' -or -name '*.so' ')' -exec rm -f '{}' ';'
+  [ -d "$extdir" ] && find "$extdir" -name '*.o' -exec rm -f '{}' ';'
 }
 
 # Check if list includes element
