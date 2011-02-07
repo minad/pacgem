@@ -60,11 +60,11 @@ module Pacgem
     end
 
     def print(s, *c)
-      $stdout.print(color(s, *c))
+      STDOUT.print(color(s, *c))
     end
 
     def puts(s, *c)
-      $stdout.puts(color(s, *c))
+      STDOUT.puts(color(s, *c))
     end
 
     private
@@ -303,8 +303,8 @@ module Pacgem
       process
       exit 0
     rescue OptionParser::ParseError => ex
-      $stderr.puts ex.message
-      $stderr.puts @opts
+      STDERR.puts ex.message
+      STDERR.puts @opts
       exit 1
     rescue Exception => ex
       raise ex if @options[:trace] || SystemExit === ex
@@ -317,8 +317,8 @@ module Pacgem
 
     def process
       if @args.length < 1
-        $stderr.puts 'You must specify at least one gem.'
-        $stderr.puts @opts
+        STDERR.puts 'You must specify at least one gem.'
+        STDERR.puts @opts
         exit 1
       end
 
@@ -408,7 +408,7 @@ _gem_build() {
   msg 'Installing gem...'
 
   # Install the gem
-  mkdir -p $_bindir $_gemdir
+  install -d -m755 $_bindir $_gemdir
   $_gem install --no-ri --no-rdoc --ignore-dependencies \
                 --bindir $_bindir --install-dir $_gemdir "$srcdir/$_gemname-$pkgver.gem"
 }
@@ -422,7 +422,7 @@ _gem_fix() {
   # Find man pages and move them to the correct directory
   local mandir="$_gemdir/gems/$_gemname-$pkgver/man"
   if [ -d "$mandir" ]; then
-    mkdir -p $_mandir
+    install -d -m755 $_mandir
     mv $mandir/* $_mandir
   fi
 
