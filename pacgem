@@ -219,7 +219,7 @@ module Pacgem
 
     def resolve_dep(dep, explicit)
       @packages[dep.name] ||= begin
-        info "Resolving Gem #{dep}..."
+        info "Resolving gem #{dep}..."
         spec, uri = Gem::SpecFetcher.fetcher.fetch(dep, true).last
         raise "Gem #{dep} not found" unless spec
         subinfo("#{spec.full_name}: #{spec.summary}")
@@ -330,13 +330,19 @@ Pacgem::Command.new(ARGV).run if $0 == __FILE__
 
 __END__
 
-build() {
-  # gemdir is defined inside build() because if ruby[gems] is not installed on the system
-  #  makepkg will barf when sourcing the PKGBUILD
-  local gemdir="$pkgdir$(gem environment gemdir)"
+_install_gem() {
+  local gemdir=$1
+
+  msg 'Installing gem...'
 
   # Install the gem
   gem install --no-ri --no-rdoc --ignore-dependencies -n "$pkgdir/usr/bin" -i "$gemdir" "$srcdir/$_gemname-$pkgver.gem"
+}
+
+_fix_gem() {
+  local gemdir=$1
+
+  msg 'Fixing gem installation...'
 
   # Set mode of executables to 755
   [ -d "$gemdir/bin" ] && find "$gemdir/bin" -type f -exec chmod 755 '{}' ';'
@@ -360,7 +366,9 @@ build() {
 
   # Sometimes there are files which are not world readable. Fix this.
   find "$pkgdir" -type f '!' -perm '-004' -exec chmod o+r '{}' ';'
+}
 
+_auto_depends() {
   msg 'Automatic dependency resolution...'
 
   # Find all referenced shared libraries
@@ -389,4 +397,14 @@ build() {
     [ "$found" -eq "0" ] && depends=(${depends[@]} $pkg)
   done
   msg2 "Referenced packages: ${depends[*]}"
+}
+
+build() {
+  # gemdir is defined inside build() because if ruby[gems] is not installed on the system
+  # makepkg will barf when sourcing the PKGBUILD
+  local gemdir="$pkgdir$(gem environment gemdir)"
+
+  _install_gem "$gemdir"
+  _fix_gem "$gemdir"
+  _auto_depends
 }
