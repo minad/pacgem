@@ -118,14 +118,14 @@ module Pacgem
       @version, @uri, @explicit = version, uri, explicit
     end
 
-    def install(noinstall = false)
+    def install(options)
       FileUtils.mkpath(@name)
       Dir.chdir(@name) do
         download
-        gen_pkgbuild
-        makepkg(noinstall)
+        gen_pkgbuild(options)
+        makepkg(options[:noinstall])
         namcap
-        pacman_install unless noinstall
+        pacman_install unless options[:noinstall]
       end
     end
 
@@ -161,7 +161,7 @@ module Pacgem
       system("sudo pacman --as#{@explicit ? 'explicit' : 'deps'} -U #{@pkgfile.shellescape}")
     end
 
-    def gen_pkgbuild
+    def gen_pkgbuild(options)
       spec = Gem::Format.from_file_by_path(@gemfile).spec
 
       depends = %w(ruby)
@@ -178,8 +178,15 @@ module Pacgem
         optdepends << "ruby-#{dep.name.downcase}: #{truncate(optspec.summary, 80)}" if optspec
       end
 
+      builder = %w(build fix)
+      unless spec.extensions.empty?
+        builder << 'cleanext'
+        builder << 'autodepends' unless options[:noautodepends]
+      end
+
       pkg = Pkgbuild.new
       pkg['_gemname']    = spec.name
+      pkg['_gembuilder'] = builder
       pkg['pkgname']     = @name
       pkg['pkgver']      = spec.version.to_s
       pkg['pkgrel']      = 1
@@ -209,7 +216,7 @@ module Pacgem
 
     def install
       @order.reject! {|pkg| pkg.installed? }
-      @order.each {|pkg| pkg.install(@options[:noinstall]) }
+      @order.each {|pkg| pkg.install(@options) }
     end
 
     def resolve(name, version = nil)
@@ -315,6 +322,10 @@ Options:
         @options[:destdir] = Dir.pwd
       end
 
+      opts.on('--noautodepends', :NONE, 'Disable automatic dependency generation for shared objects (*.so)') do
+        @options[:noautodepends] = true
+      end
+
       opts.on('--trace', :NONE, 'Show a full traceback on error') do
         @options[:trace] = true
       end
@@ -331,7 +342,7 @@ Pacgem::Command.new(ARGV).run if $0 == __FILE__
 
 __END__
 
-_install_gem() {
+_gem_build() {
   local gemdir=$1
 
   msg 'Installing gem...'
@@ -340,17 +351,13 @@ _install_gem() {
   gem install --no-ri --no-rdoc --ignore-dependencies -n "$pkgdir/usr/bin" -i "$gemdir" "$srcdir/$_gemname-$pkgver.gem"
 }
 
-_fix_gem() {
+_gem_fix() {
   local gemdir=$1
 
   msg 'Fixing gem installation...'
 
   # Set mode of executables to 755
   [ -d "$gemdir/bin" ] && find "$gemdir/bin" -type f -exec chmod 755 '{}' ';'
-
-  # Remove build leftovers
-  local extdir="$gemdir/gems/$_gemname-$pkgver/ext"
-  [ -d "$extdir" ] && find "$extdir" '(' -name '*.o' -or -name '*.so' ')' -exec rm -f '{}' ';'
 
   # Find man pages and move them to usr/share
   local mandir="$gemdir/gems/$_gemname-$pkgver/man"
@@ -364,6 +371,14 @@ _fix_gem() {
 
   # Sometimes there are files which are not world readable. Fix this.
   find "$pkgdir" -type f '!' -perm '-004' -exec chmod o+r '{}' ';'
+}
+
+_gem_cleanext() {
+  local gemdir=$1
+
+  msg 'Removing native build leftovers...'
+  local extdir="$gemdir/gems/$_gemname-$pkgver/ext"
+  [ -d "$extdir" ] && find "$extdir" '(' -name '*.o' -or -name '*.so' ')' -exec rm -f '{}' ';'
 }
 
 # Check if list includes element
@@ -389,7 +404,7 @@ _dependency_satisfied() {
   return 1
 }
 
-_auto_depends() {
+_gem_autodepends() {
   msg 'Automatic dependency resolution...'
 
   # Find all referenced shared libraries
@@ -423,7 +438,6 @@ build() {
   # makepkg will barf when sourcing the PKGBUILD
   local gemdir="$pkgdir$(gem environment gemdir)"
 
-  _install_gem "$gemdir"
-  _fix_gem "$gemdir"
-  _auto_depends
+  local i
+  for i in ${_gembuilder[@]}; do _gem_$i "$gemdir"; done
 }
