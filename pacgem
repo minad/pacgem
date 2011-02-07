@@ -191,11 +191,21 @@ build() {
   _extdir="$_gemdir/gems/$_gemname-$pkgver/ext"
   [ -d "$_extdir" ] && find "$_extdir" '(' -name '*.o' -or -name '*.so' ')' -exec rm -f '{}' ';'
 
+  # Find man pages and move them to usr/share
+  _mandir="$_gemdir/gems/$_gemname-$pkgver/man"
+  if [ -d "$_mandir" ]; then
+    mkdir -p "$pkgdir/usr/share"
+    mv "$_mandir" "$pkgdir/usr/share"
+  fi
+
   # Remove cached gem file
   rm -f "$_gemdir/cache/$_gemname-$pkgver.gem"
 
   # Remove empty directories
   find "$pkgdir" -depth -type d -empty -exec rmdir '{}' ';'
+
+  # Sometimes there are files which are not world readable. Fix this.
+  find "$pkgdir" -type f '!' -perm '-004' -exec chmod o+r '{}' ';'
 
   # Add missing dependencies
   for _so in `find "$pkgdir" -type f -name '*.so'`; do
