@@ -219,7 +219,7 @@ module Pacgem
     end
 
     def install
-      @order.reject! {|pkg| pkg.installed? }
+      @order.reject! {|pkg| pkg.installed? } unless @options[:noinstall]
       @order.each {|pkg| pkg.install(@options) }
     end
 
