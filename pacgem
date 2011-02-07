@@ -193,6 +193,7 @@ module Pacgem
       pkg['source']      = ["#{@uri}gems/$_gemname-$pkgver.gem"]
       pkg['sha256sums']  = [Digest::SHA2.file(@gemfile).to_s]
       pkg['noextract']   = %w($_gemname-$pkgver.gem)
+      pkg['options']     = %w(!emptydirs)
       spew('PKGBUILD', pkg.to_s)
     end
   end
@@ -360,9 +361,6 @@ _fix_gem() {
 
   # Remove cached gem file
   rm -f "$gemdir/cache/$_gemname-$pkgver.gem"
-
-  # Remove empty directories
-  find "$pkgdir" -depth -type d -empty -exec rmdir '{}' ';'
 
   # Sometimes there are files which are not world readable. Fix this.
   find "$pkgdir" -type f '!' -perm '-004' -exec chmod o+r '{}' ';'
