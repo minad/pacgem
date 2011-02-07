@@ -100,10 +100,8 @@ module Pacgem
         download
         gen_pkgbuild
         makepkg(noinstall)
-        unless noinstall
-          namcap
-          pacman_install
-        end
+        namcap
+        pacman_install unless noinstall
       end
     end
 
