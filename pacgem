@@ -227,7 +227,6 @@ module Pacgem
 
     def resolve_dep(dep, explicit)
       @packages[dep.name] ||= begin
-        info "Resolving gem #{dep}..."
         spec, uri = Gem::SpecFetcher.fetcher.fetch(dep, true).last
         raise "Gem #{dep} not found" unless spec
         subinfo("#{spec.full_name}: #{spec.summary}")
@@ -283,6 +282,7 @@ module Pacgem
       begin
         Dir.chdir(dir) do
           installer = Installer.new(@options)
+          info 'Resolving gems...'
           @args.each do |gem|
             if gem =~ /^([-\w]+)((?:[<>]=?|=|~>|-)\d+(?:\.\d+)*)?$/
               name, version = $1, $2
