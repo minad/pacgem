@@ -116,7 +116,7 @@ module Pacgem
 
     def download
       @gemfile = "#{@gemname}-#{@version}.gem"
-      IO.copy_stream(open("#{@uri}gems/#{@gemfile}"), File.open(@gemfile, 'w'))
+      FileUtils.copy_stream(open("#{@uri}gems/#{@gemfile}"), File.open(@gemfile, 'w'))
     end
 
     def makepkg(nodeps)
