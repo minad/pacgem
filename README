@@ -17,6 +17,9 @@ DESCRIPTION
        --noautodepends
               Disable automatic dependency generation for shared objects (*.so)
 
+       --nocolor
+              Disable colored output
+
        --trace
               Show a full traceback on error
 
