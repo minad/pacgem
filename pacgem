@@ -177,29 +177,28 @@ sha256sums=(#{digest})
 noextract=($_gemname-$pkgver.gem)
 
 build() {
-  cd $srcdir
-
   # _gemdir is defined inside build() because if ruby[gems] is not installed on the system
   #  makepkg will barf when sourcing the PKGBUILD
-  local _gemdir=`gem environment gemdir`
+  local _gemdir=$pkgdir`gem environment gemdir`
 
   # Install the gem
-  gem install --no-ri --no-rdoc --ignore-dependencies -n "$pkgdir/usr/bin" -i "$pkgdir$_gemdir" $_gemname-$pkgver.gem
+  gem install --no-ri --no-rdoc --ignore-dependencies -n "$pkgdir/usr/bin" -i "$_gemdir" "$srcdir/$_gemname-$pkgver.gem"
 
   # Set mode of executables to 755
-  [ -d "$pkgdir$_gemdir/bin" ]  && find "$pkgdir$_gemdir/bin" -type f -exec chmod 755 '{}' ';'
+  [ -d "$_gemdir/bin" ] && find "$_gemdir/bin" -type f -exec chmod 755 '{}' ';'
 
   # Remove build leftovers
-  [ -d "$pkgdir$_gemdir/gems" ] && find "$pkgdir$_gemdir/gems" -name '*.o' -exec rm -f '{}' ';'
+  _extdir="$_gemdir/gems/$_gemname-$pkgver/ext"
+  [ -d "$_extdir" ] && find "$_extdir" '(' -name '*.o' -or -name '*.so' ')' -exec rm -f '{}' ';'
 
   # Remove cached gem file
-  rm -f "$pkgdir$_gemdir/cache/$_gemname-$pkgver.gem"
+  rm -f "$_gemdir/cache/$_gemname-$pkgver.gem"
 
   # Remove empty directories
-  find "$pkgdir$_gemdir" -depth -type d -empty -exec rmdir '{}' ';'
+  find "$pkgdir" -depth -type d -empty -exec rmdir '{}' ';'
 
   # Add missing dependencies
-  for _so in `find "$pkgdir$_gemdir" -type f -name '*.so'`; do
+  for _so in `find "$pkgdir" -type f -name '*.so'`; do
     for _dep in `readelf -d $_so | sed '/library:/!d;s/.*library: \\[\\(.*\\)\\].*/\\1/'`; do
       _pkg=`pacman -Qqo /lib/$_dep /usr/lib/$_dep 2>/dev/null || true`
       _found=0
