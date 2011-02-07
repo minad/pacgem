@@ -26,7 +26,49 @@ module Pacgem
     end
   end
 
-  module Logger
+  class Logger
+    def initialize
+      @color = STDOUT.isatty
+    end
+
+    def color?
+      @color
+    end
+
+    def nocolor!
+      @color = false
+    end
+
+    def msg(s)
+      print('==> ', :green, :bold)
+      puts(s, :bold)
+    end
+
+    def msg2(s)
+      print('  -> ', :blue, :bold)
+      puts(s, :bold)
+    end
+
+    def warn(s)
+      print('==> WARNING: ', :yellow, :bold)
+      puts(s, :bold)
+    end
+
+    def error(s)
+      print('==> ERROR: ', :red, :bold)
+      puts(s, :bold)
+    end
+
+    def print(s, *c)
+      $stdout.print(color(s, *c))
+    end
+
+    def puts(s, *c)
+      $stdout.puts(color(s, *c))
+    end
+
+    private
+
     COLORS = {
       :clear         =>  0,
       :bold          =>  1,
@@ -56,44 +98,20 @@ module Pacgem
       :bg_white      => 47,
     }
 
-    @coloring = STDOUT.isatty
-
-    def self.coloring?
-      @coloring
-    end
-
-    def self.nocolor!
-      @coloring = false
-    end
-
     def color(s, *c)
-      if Logger.coloring?
-        c.inject('') {|x,c| "#{x}\e[#{COLORS[c]}m" } + "#{s}\e[0m"
+      if color?
+        res = ''
+        c.each {|c| res << "\e[#{COLORS[c]}m" }
+        res << "#{s}\e[0m"
       else
         s
       end
     end
-
-    def msg(s)
-      puts(color('==> ', :green, :bold) + color(s, :bold))
-    end
-
-    def msg2(s)
-      puts(color('  -> ', :blue, :bold) + color(s, :bold))
-    end
-
-    def warn(s)
-      puts(color('==> WARNING: ', :yellow, :bold) + color(s, :bold))
-    end
-
-    def error(s)
-      puts(color('==> ERROR: ', :red, :bold) + color(s, :bold))
-    end
-
-    extend self
   end
 
-  class Pkgbuild
+  class PkgBuild
+    include Util
+
     def initialize
       @vars = []
       @@build ||= DATA.read
@@ -123,63 +141,50 @@ module Pacgem
 
   class Package
     include Util
-    include Logger
 
-    def initialize(name, version, uri, explicit)
+    attr_reader :gemname, :name, :version, :uri
+    attr_writer :explicit
+
+    def initialize(name, version, uri)
       @gemname = name
       @name = "ruby-#{name.downcase}"
-      @version, @uri, @explicit = version, uri, explicit
+      @version, @uri = version, uri
     end
 
-    def install(options)
-      FileUtils.mkpath(@name)
-      Dir.chdir(@name) do
-        download
-        gen_pkgbuild(options)
-        makepkg(options[:noinstall])
-        namcap
-        pacman_install unless options[:noinstall]
-      end
+    def explicit?
+      @explicit
     end
 
     def installed?
-      installed = `pacman -Q #{@name.shellescape} 2>/dev/null`.split(/\s+/)
-      installed[1] =~ /^#{@version}\-\d+$/
+      installed = `pacman -Q #{name.shellescape} 2>/dev/null`.split(/\s+/)
+      installed[1] =~ /^#{version}\-\d+$/
+    end
+
+    def install(options, logger)
+      FileUtils.mkpath(name)
+      Dir.chdir(name) do
+        gemfile = download
+        gen_pkgbuild(gemfile, options)
+        pkgfile = makepkg(options)
+        namcap(pkgfile, logger)
+        pacman(pkgfile, logger) unless options[:noinstall]
+      end
     end
 
     private
 
     def download
-      @gemfile = "#{@gemname}-#{@version}.gem"
-      open("#{@uri}gems/#{@gemfile}") do |i|
-        File.open(@gemfile, 'w') do |o|
+      gemfile = "#{gemname}-#{version}.gem"
+      open("#{uri}gems/#{gemfile}") do |i|
+        File.open(gemfile, 'w') do |o|
           FileUtils.copy_stream(i, o)
         end
       end
+      gemfile
     end
 
-    def makepkg(nodeps)
-      system("makepkg -f #{nodeps ? '--nodeps' : ''} #{Logger.coloring? ? '' : '--nocolor'}")
-      @pkgfile = Dir["#{@name}-*.pkg.*"].first
-      raise "makepkg #{@name} failed" unless @pkgfile
-    end
-
-    def namcap
-      if which?('namcap')
-        msg "Checking #{@pkgfile} with namcap..."
-        system("namcap #{@pkgfile}")
-      else
-        warn "namcap is not installed"
-      end
-    end
-
-    def pacman_install
-      msg "Installing #{@pkgfile} with pacman..."
-      system("sudo pacman --as#{@explicit ? 'explicit' : 'deps'} -U #{@pkgfile.shellescape}")
-    end
-
-    def gen_pkgbuild(options)
-      spec = Gem::Format.from_file_by_path(@gemfile).spec
+    def gen_pkgbuild(gemfile, options)
+      spec = Gem::Format.from_file_by_path(gemfile).spec
 
       depends = %w(ruby)
       spec.runtime_dependencies.each do |dep|
@@ -201,10 +206,10 @@ module Pacgem
         builder << 'autodepends' unless options[:noautodepends]
       end
 
-      pkg = Pkgbuild.new
+      pkg = PkgBuild.new
       pkg['_gemname']    = spec.name
       pkg['_gembuilder'] = builder
-      pkg['pkgname']     = @name
+      pkg['pkgname']     = name
       pkg['pkgver']      = spec.version.to_s
       pkg['pkgrel']      = 1
       pkg['pkgdesc']     = spec.summary
@@ -214,53 +219,70 @@ module Pacgem
       pkg['makedepends'] = %w(rubygems binutils sed findutils)
       pkg['depends']     = depends
       pkg['optdepends']  = optdepends
-      pkg['source']      = ["#{@uri}gems/$_gemname-$pkgver.gem"]
-      pkg['sha256sums']  = [Digest::SHA2.file(@gemfile).to_s]
+      pkg['source']      = ["#{uri}gems/$_gemname-$pkgver.gem"]
+      pkg['sha256sums']  = [Digest::SHA2.file(gemfile).to_s]
       pkg['noextract']   = %w($_gemname-$pkgver.gem)
       pkg['options']     = %w(!emptydirs)
       pkg.save
     end
+
+    def makepkg(options)
+      system("makepkg -f #{options[:noinstall] && '--nodeps'} #{options[:nocolor] && '--nocolor'}")
+      Dir["#{name}-*.pkg.*"].first || raise("makepkg #{name} failed")
+    end
+
+    def namcap(pkgfile, logger)
+      if which?('namcap')
+        logger.msg "Checking #{pkgfile} with namcap..."
+        system("namcap #{pkgfile}")
+      else
+        logger.warn 'namcap is not installed'
+      end
+    end
+
+    def pacman(pkgfile, logger)
+      logger.msg "Installing #{pkgfile} with pacman..."
+      system("sudo pacman --as#{explicit? ? 'explicit' : 'deps'} -U #{pkgfile.shellescape}")
+    end
   end
 
   class Installer
-    include Util
-    include Logger
-
-    def initialize(options)
-      @options = options
-      @order = []
+    def initialize(options, logger)
+      @options, @logger = options, logger
+      @list = []
       @packages = {}
     end
 
     def install
-      @order.reject! {|pkg| pkg.installed? } unless @options[:noinstall]
-      @order.each {|pkg| pkg.install(@options) }
+      @list.reject! {|pkg| pkg.installed? } unless @options[:noinstall]
+      @list.each {|pkg| pkg.install(@options, @logger) }
     end
 
     def resolve(name, version = nil)
-      resolve_dep(Gem::Dependency.new(name, version), true)
+      pkg = resolve_dep(Gem::Dependency.new(name, version))
+      pkg.explicit = true
     end
 
     private
 
-    def resolve_dep(dep, explicit)
+    def resolve_dep(dep)
       @packages[dep.name] ||= begin
         spec, uri = Gem::SpecFetcher.fetcher.fetch(dep, true).last
         raise "Gem #{dep} not found" unless spec
-        subinfo("#{spec.full_name}: #{spec.summary}")
-        spec.runtime_dependencies.each {|dep| resolve_dep(dep, false) }
-        (@order << Package.new(dep.name, spec.version, uri, explicit)).last
+        @logger.msg2 "#{spec.full_name}: #{spec.summary}"
+        spec.runtime_dependencies.each {|dep| resolve_dep(dep) }
+        pkg = Package.new(dep.name, spec.version, uri)
+        @list << pkg
+        pkg
       end
     end
   end
 
   class Command
-    include Util
-    include Logger
-
     def initialize(args)
       @args = args
       @options = {}
+      @logger = Logger.new
     end
 
     def run
@@ -274,8 +296,8 @@ module Pacgem
       exit 1
     rescue Exception => ex
       raise ex if @options[:trace] || SystemExit === ex
-      error ex.message
-      msg2 'Use --trace for backtrace.'
+      @logger.error ex.message
+      @logger.msg2 'Use --trace for backtrace.'
       exit 1
     end
 
@@ -291,22 +313,22 @@ module Pacgem
       raise 'You must not be root to run pacgem!' if Process.uid == 0
 
       trap :SIGINT do
-        error 'Aborted by user! Exiting...'
-        exit
+        @logger.error 'Aborted by user! Exiting...'
+        exit 1
       end
 
       if @options[:destdir]
         dir = File.expand_path(@options[:destdir])
         FileUtils.mkpath(dir)
-        msg "Saving package files in #{dir}"
+        @logger.msg "Saving package files in #{dir}"
       else
         dir = Dir.mktmpdir('pacgem-')
       end
 
       begin
         Dir.chdir(dir) do
-          installer = Installer.new(@options)
-          msg 'Resolving gems...'
+          installer = Installer.new(@options, @logger)
+          @logger.msg 'Resolving gems...'
           @args.each do |gem|
             if gem =~ /^([-\w]+)((?:[<>]=?|=|~>|-)\d+(?:\.\d+)*)?$/
               name, version = $1, $2
@@ -351,7 +373,7 @@ Options:
       end
 
       opts.on('--nocolor', :NONE, 'Disable colored output') do
-        Logger.nocolor!
+        @logger.nocolor!
       end
 
       opts.on('--trace', :NONE, 'Show a full traceback on error') do
@@ -434,7 +456,7 @@ _gem_autodepends() {
   local deps=$(find "$pkgdir" -type f -name '*.so')
   [ "$deps" != '' ] || return 0
 
-  deps=$(readelf -d $deps | sed '/library:/!d;s/.*library: \[\(.*\)\].*/\1/')
+  deps=$(readelf -d $deps | sed '/library:/!d;s/.*library: \[\(.*\)\].*/\1/' | sort | uniq)
 
   # Find referenced libraries on the library search path
   local libs=() lib path
