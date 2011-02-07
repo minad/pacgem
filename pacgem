@@ -126,9 +126,7 @@ module Pacgem
     def namcap
       if which?('namcap')
         info "Checking #{@pkgfile} with namcap..."
-        `namcap #{@pkgfile}`.each_line do |line|
-          subinfo(line.chomp)
-        end
+        system("namcap #{@pkgfile}")
       else
         warn "namcap is not installed"
       end
