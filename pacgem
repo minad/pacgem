@@ -361,18 +361,32 @@ build() {
   # Sometimes there are files which are not world readable. Fix this.
   find "$pkgdir" -type f '!' -perm '-004' -exec chmod o+r '{}' ';'
 
-  # Add missing dependencies
-  for _so in `find "$pkgdir" -type f -name '*.so'`; do
-    for _dep in `readelf -d $_so | sed '/library:/!d;s/.*library: \[\(.*\)\].*/\1/'`; do
-      _pkg=`pacman -Qqo /lib/$_dep /usr/lib/$_dep 2>/dev/null || true`
-      _found=0
-      for _i in ${depends[@]}; do
-        [ "$_i" == "$_pkg" ] && _found=1
-      done
-      if [ "$_found" -eq "0" ]; then
-        msg "Additional dependency: $_dep provided by $_pkg"
-        depends=(${depends[@]} $_pkg)
-      fi
+  msg 'Automatic dependency resolution...'
+
+  # Find all referenced shared libraries
+  local deps=$(find "$pkgdir" -type f -name '*.so' -print0 |\
+               xargs -0 readelf -d |\
+               sed '/library:/!d;s/.*library: \[\(.*\)\].*/\1/')
+
+  # Find referenced libraries on the library search path
+  local libs=() lib path
+  for lib in $deps; do
+    for path in /lib /usr/lib; do
+      [ -f "$path/$lib" ] && libs=(${libs[@]} "$path/$lib")
     done
   done
+
+  msg2 "Referenced libraries: ${libs[*]}"
+
+  # Find matching packages with pacman -Qo
+  # and add them to the depends array
+  local pkg
+  for pkg in $(pacman -Qqo ${libs[@]}); do
+    local found=0 i
+    for i in ${depends[@]}; do
+      [ "$i" == "$pkg" ] && found=1
+    done
+    [ "$found" -eq "0" ] && depends=(${depends[@]} $pkg)
+  done
+  msg2 "Referenced packages: ${depends[*]}"
 }
