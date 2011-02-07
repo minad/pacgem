@@ -21,13 +21,13 @@ DESCRIPTION
               Show help message
 
 EXAMPLES
-       pacgem --noinstall rack    Create ruby-rack package in the directory ./ruby-rack
+       pacgem --noinstall rake    Create ruby-rake package in the directory ./ruby-rake
 
-       pacgem rack-1.0            Create temporary ruby-rack package and install it
+       pacgem rake-1.0            Create temporary ruby-rake package and install it
 
-       pacgem 'rack>1.0'          Different version specification
+       pacgem 'rake>1.0'          Different version specification
 
-       pacgem thin 'rack~>1.0'    Different version specification
+       pacgem thin 'rake~>1.0'    Different version specification
 
 AUTHOR
        Daniel Mendler (mail at daniel-mendler.de)

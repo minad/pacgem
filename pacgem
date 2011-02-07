@@ -320,10 +320,10 @@ build() {
 Pacgem installs Ruby Gems using the Arch Linux Package Manager (pacman).
 
 Examples:
-    pacgem --noinstall rack    Create ruby-rack package in the directory ./ruby-rack
-    pacgem rack-1.0            Create temporary ruby-rack package and install it
-    pacgem 'rack>1.0'          Different version specification
-    pacgem thin 'rack~>1.0'    Different version specification
+    pacgem --noinstall rake    Create ruby-rake package in the directory ./ruby-rake
+    pacgem rake-1.0            Create temporary ruby-rake package and install it
+    pacgem 'rake>1.0'          Different version specification
+    pacgem thin 'rake~>1.0'    Different version specification
 
 Options:
 }
