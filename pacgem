@@ -167,7 +167,7 @@ module Pacgem
         gen_pkgbuild(gemfile, options)
         pkgfile = makepkg(options)
         namcap(pkgfile, logger)
-        pacman(pkgfile, logger) unless options[:noinstall]
+        pacman(pkgfile, logger) unless options[:create]
       end
     end
 
@@ -239,7 +239,7 @@ module Pacgem
     end
 
     def makepkg(options)
-      system("makepkg -f #{options[:noinstall] && '--nodeps'} #{options[:nocolor] && '--nocolor'}")
+      system("makepkg -f #{options[:create] && '--nodeps'} #{options[:nocolor] && '--nocolor'}")
       Dir["#{name}-*.pkg.*"].first || raise("makepkg #{name} failed")
     end
 
@@ -271,7 +271,7 @@ module Pacgem
     end
 
     def install
-      @list.reject! {|pkg| pkg.installed? } unless @options[:noinstall]
+      @list.reject! {|pkg| pkg.installed? } unless @options[:create]
       @list.each {|pkg| pkg.install(@options, @logger) }
     end
 
@@ -368,7 +368,7 @@ module Pacgem
 Pacgem installs Ruby Gems using the Arch Linux Package Manager (pacman).
 
 Examples:
-    pacgem --noinstall rake    Create ruby-rake package in the directory ./ruby-rake
+    pacgem --create rake       Create ruby-rake package in the directory ./ruby-rake
     pacgem rake-1.0            Create temporary ruby-rake package and install it
     pacgem 'rake>1.0'          Different version specification
     pacgem thin 'rake~>1.0'    Different version specification
@@ -380,8 +380,8 @@ Options:
         @options[:destdir] = dir
       end
 
-      opts.on('-n', '--noinstall', :NONE, 'Do not install package files') do
-        @options[:noinstall] = true
+      opts.on('-c', '--create', :NONE, 'Create package only, do not install') do
+        @options[:create] = true
         @options[:destdir] = Dir.pwd
       end
 

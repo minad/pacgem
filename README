@@ -11,8 +11,8 @@ DESCRIPTION
        -d, --destdir DIR
               Destination directory for package files
 
-       -n, --noinstall
-              Do not install package files
+       -c, --create
+              Create package only, do not install
 
        --noautodepends
               Disable automatic dependency generation for shared objects (*.so)
