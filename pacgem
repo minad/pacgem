@@ -228,7 +228,7 @@ module Pacgem
       pkg['arch']        = spec.extensions.empty? ? %w(any) : %w(i686 x86_64)
       pkg['url']         = spec.homepage
       pkg['license']     = [spec.license || 'Ruby']
-      pkg['makedepends'] = %W(#{Package.ruby} binutils sed findutils)
+      pkg['makedepends'] = %W(#{Package.ruby} binutils)
       pkg['depends']     = depends
       pkg['optdepends']  = optdepends
       pkg['source']      = %W(#{uri}gems/$_gemname-$pkgver.gem)
