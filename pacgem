@@ -158,7 +158,7 @@ module Pacgem
     end
 
     def installed?
-      installed = `pacman -Q #{name.shellescape} 2>/dev/null`.strip.split(/\s+/, 2)
+      installed = pacman_parse("-Q #{name.shellescape}").strip.split(/\s+/, 2)
       installed[1] =~ /^#{version}\-\d+$/
     end
 
@@ -169,11 +169,15 @@ module Pacgem
         gen_pkgbuild(gemfile, options)
         pkgfile = makepkg(options)
         namcap(pkgfile, logger)
-        pacman(pkgfile, logger) unless options[:create]
+        installpkg(pkgfile, logger) unless options[:create]
       end
     end
 
     private
+
+    def pacman_parse(args)
+      `LC_ALL=C pacman #{args} 2>/dev/null`
+    end
 
     def self.ruby
       @ruby ||= if RUBY_VERSION > '1.9'
@@ -254,8 +258,14 @@ module Pacgem
       end
     end
 
-    def pacman(pkgfile, logger)
+    def installpkg(pkgfile, logger)
       logger.msg "Installing #{pkgfile} with pacman..."
+      pacman_parse('-v') =~ /^Lock File\s+:\s+(.*)$/
+      lockfile = $1
+      if File.exists?(lockfile)
+        logger.msg2 'Pacman is currently in use, please wait.'
+        sleep 1 while File.exists?(lockfile)
+      end
       cmd = "pacman --as#{explicit? ? 'explicit' : 'deps'} -U #{pkgfile.shellescape}"
       if which?('sudo')
         system("sudo #{cmd}")
