@@ -422,7 +422,7 @@ _gem_fix() {
   msg 'Fixing gem installation...'
 
   # Set mode of executables to 755
-  [ -d "$_gemdir/bin" ] && find "$_gemdir/bin" -type f -exec chmod 755 '{}' ';'
+  [ -d "$_gemdir/bin" ] && find "$_gemdir/bin" -type f -exec chmod 755 -- '{}' ';'
 
   # Find man pages and move them to the correct directory
   local mandir="$_gemdir/gems/$_gemname-$pkgver/man"
@@ -435,13 +435,13 @@ _gem_fix() {
   rm -f "$_gemdir/cache/$_gemname-$pkgver.gem"
 
   # Sometimes there are files which are not world readable. Fix this.
-  find $pkgdir -type f '!' -perm '-004' -exec chmod o+r '{}' ';'
+  find $pkgdir -type f '!' -perm '-004' -exec chmod o+r -- '{}' ';'
 }
 
 _gem_cleanext() {
   msg 'Removing native build leftovers...'
   local extdir="$_gemdir/gems/$_gemname-$pkgver/ext"
-  [ -d "$extdir" ] && find "$extdir" -name '*.o' -exec rm -f '{}' ';'
+  [ -d "$extdir" ] && find "$extdir" -name '*.o' -exec rm -f -- '{}' ';'
 }
 
 # Check if dependency is already satisfied
