@@ -503,5 +503,7 @@ build() {
   _mandir=$pkgdir$(_rbconfig mandir)
 
   local i
-  for i in ${_gembuilder[@]}; do _gem_$i $_gemdir; done
+  for i in ${_gembuilder[@]}; do
+    _gem_$i
+  done
 }
