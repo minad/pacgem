@@ -452,7 +452,7 @@ _dependency_satisfied() {
     in_array $dep ${deps[@]} && return 0
     local found=0 pkg
     # Warning: This could break easily if the pacman output format changes.
-    for pkg in $(LC_ALL=C pacman -Qi ${deps[@]} 2>/dev/null | sed '/Depends On/!d;s/.*: //;s/None\|>=[^ ]*//g'); do
+    for pkg in $(LC_ALL=C pacman -Qi ${deps[@]} 2>/dev/null | sed '/Depends On/!d;s/.*: //;s/None\|[<>]=\?[^ ]*\|=[^ ]*//g'); do
       if ! in_array $pkg ${deps[@]}; then
         deps=(${deps[@]} $pkg) && found=1
       fi
