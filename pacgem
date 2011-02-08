@@ -439,23 +439,18 @@ _gem_cleanext() {
   [ -d "$extdir" ] && find "$extdir" -name '*.o' -exec rm -f '{}' ';'
 }
 
-# Check if list includes element
-_includes_not() {
-  local elem=$1
-  shift
-  for i; do [ "$i" = "$elem" ] && return 1; done
-  return 0
-}
-
 # Check if dependency is already satisfied
 _dependency_satisfied() {
   local dep=$1 deps="${depends[@]}"
+  [ "$(type -t in_array)" == "function" ] || error "in_array should be provided by makepkg"
   while true; do
-    _includes_not $dep ${deps[@]} || return 0
+    in_array $dep ${deps[@]} && return 0
     local found=0 pkg
     # Warning: This could break easily if the pacman output format changes.
     for pkg in $(pacman -Qi ${deps[@]} 2>/dev/null | sed '/Depends/!d;s/.*: //;s/None\|>=[^ ]*//g'); do
-      _includes_not $pkg ${deps[@]} && deps=(${deps[@]} $pkg) && found=1
+      if ! in_array $pkg ${deps[@]}; then
+        deps=(${deps[@]} $pkg) && found=1
+      fi
     done
     [ $found -eq 1 ] || break
   done
