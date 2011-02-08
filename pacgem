@@ -51,7 +51,7 @@ module Pacgem
       puts(s, :bold)
     end
 
-    def warn(s)
+    def warning(s)
       print('==> WARNING: ', :yellow, :bold)
       puts(s, :bold)
     end
@@ -254,7 +254,7 @@ module Pacgem
         logger.msg "Checking #{pkgfile} with namcap..."
         system("namcap #{pkgfile}")
       else
-        logger.warn 'namcap is not installed'
+        logger.warning 'namcap is not installed'
       end
     end
 
