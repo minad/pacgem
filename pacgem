@@ -490,7 +490,7 @@ _gem_autodepends() {
   local deps=$(find $pkgdir -type f -name '*.so')
   [ "$deps" != '' ] || return 0
 
-  deps=$(readelf -d $deps | sed '/library:/!d;s/.*library: \[\(.*\)\].*/\1/' | sort | uniq)
+  deps=$(readelf -d $deps | sed -n 's/.*Shared library: \[\(.*\)\].*/\1/p' | sort | uniq)
 
   # Find referenced libraries on the library search path
   local libs=() lib path
