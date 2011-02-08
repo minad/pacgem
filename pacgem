@@ -254,7 +254,12 @@ module Pacgem
 
     def pacman(pkgfile, logger)
       logger.msg "Installing #{pkgfile} with pacman..."
-      system("sudo pacman --as#{explicit? ? 'explicit' : 'deps'} -U #{pkgfile.shellescape}")
+      cmd = "pacman --as#{explicit? ? 'explicit' : 'deps'} -U #{pkgfile.shellescape}"
+      if which?('sudo')
+        system("sudo #{cmd}")
+      else
+        system("su -c #{cmd.shellescape}")
+      end
     end
   end
 
