@@ -1,12 +1,12 @@
 # Contributor: Daniel Mendler <mail@daniel-mendler.de>
 
 pkgname=pacgem
-pkgver=0.7
+pkgver=0.8
 pkgrel=1
 pkgdesc="Install Ruby Gems as Arch Linux packages"
 arch=('any')
 url="http://github.com/minad/pacgem"
-license=('Ruby')
+license=('GPL')
 depends=('ruby')
 source=('pacgem' 'pacgem.8')
 sha256sums=('ae193417f5717d73d02486b1a84aa623ab53b47a1d7f14810c073d97029fb348'

@@ -10,6 +10,8 @@ require 'optparse'
 require 'fileutils'
 
 module Pacgem
+  VERSION = '0.8'
+
   module Util
     def which?(name)
       `which #{name} 2>/dev/null`
@@ -397,8 +399,17 @@ Options:
         @options[:trace] = true
       end
 
-      opts.on_tail('-h', '--help', 'Show this message') do
+      opts.on_tail('-h', '--help', 'Display help and exit') do
         puts opts
+        exit
+      end
+
+      opts.on_tail('-V', '--version', 'Display version and exit') do
+        puts %{Pacgem Version #{VERSION}
+(C) 2011 Daniel Mendler
+
+This program may be freely redistributed under
+the terms of the GNU General Public License.}
         exit
       end
     end

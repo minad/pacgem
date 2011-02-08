@@ -24,10 +24,13 @@ DESCRIPTION
               Show a full traceback on error
 
        -h, --help
-              Show help message
+              Display help and exit
+
+       -V, --version
+              Display version and exit
 
 EXAMPLES
-       pacgem --noinstall rake    Create ruby-rake package in the directory ./ruby-rake
+       pacgem --create rake       Create ruby-rake package in the directory ./ruby-rake
 
        pacgem rake-1.0            Create temporary ruby-rake package and install it
 
