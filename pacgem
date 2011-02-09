@@ -443,11 +443,11 @@ _gem_fix() {
   msg 'Fixing gem installation...'
 
   # Set mode of executables to 755
-  [ -d "$_gemdir/bin" ] && find "$_gemdir/bin" -type f -exec chmod 755 -- '{}' ';'
+  [[ -d "$_gemdir/bin" ]] && find "$_gemdir/bin" -type f -exec chmod 755 -- '{}' ';'
 
   # Find man pages and move them to the correct directory
   local mandir="$_gemdir/gems/$_gemname-$pkgver/man"
-  if [ -d "$mandir" ]; then
+  if [[ -d $mandir ]]; then
     install -d -m755 $_mandir
     mv $mandir/* $_mandir
   fi
@@ -462,13 +462,13 @@ _gem_fix() {
 _gem_cleanext() {
   msg 'Removing native build leftovers...'
   local extdir="$_gemdir/gems/$_gemname-$pkgver/ext"
-  [ -d "$extdir" ] && find "$extdir" -name '*.o' -exec rm -f -- '{}' ';'
+  [[ -d $extdir ]] && find "$extdir" -name '*.o' -exec rm -f -- '{}' ';'
 }
 
 # Check if dependency is already satisfied
 _dependency_satisfied() {
   local dep=$1 deps="${depends[@]}"
-  [ "$(type -t in_array)" == "function" ] || error "in_array should be provided by makepkg"
+  [[ $(type -t in_array) == 'function' ]] || error "in_array should be provided by makepkg"
   while true; do
     in_array $dep ${deps[@]} && return 0
     local found=0 pkg
@@ -478,7 +478,7 @@ _dependency_satisfied() {
         deps=(${deps[@]} $pkg) && found=1
       fi
     done
-    [ $found -eq 1 ] || break
+    (( $found )) || break
   done
   return 1
 }
@@ -488,7 +488,7 @@ _gem_autodepends() {
 
   # Find all referenced shared libraries
   local deps=$(find $pkgdir -type f -name '*.so')
-  [ "$deps" != '' ] || return 0
+  [[ -n $deps ]] || return 0
 
   deps=$(readelf -d $deps | sed -n 's/.*Shared library: \[\(.*\)\].*/\1/p' | sort | uniq)
 
@@ -496,10 +496,10 @@ _gem_autodepends() {
   local libs=() lib path
   for lib in $deps; do
     for path in /lib /usr/lib; do
-      [ -f "$path/$lib" ] && libs=(${libs[@]} "$path/$lib")
+      [[ -f "$path/$lib" ]] && libs=(${libs[@]} "$path/$lib")
     done
   done
-  [ "${#libs}" -ne 0 ] || return 0
+  (( ${#libs} )) || return 0
 
   msg2 "Referenced libraries: ${libs[*]}"
 
