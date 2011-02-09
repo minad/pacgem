@@ -5,8 +5,8 @@ SYNOPSIS
        pacgem [options] gems...
 
 DESCRIPTION
-       Pacgem allows direct installation of ruby gems under Arch Linux. It generates a temporary PKGBUILD which is converted to a
-       package file. The package file is installed using `sudo pacman`.
+       Pacgem allows direct installation of ruby gems under Arch Linux. It generates a temporary package build script (PKGBUILD).
+       `makepkg` is used to create a package which is then installed using `sudo pacman`.
 
        -d, --destdir DIR
               Destination directory for package files
@@ -41,4 +41,5 @@ EXAMPLES
 AUTHOR
        Daniel Mendler (mail at daniel-mendler.de)
 
-Based on gem2arch by crabtw (https://github.com/crabtw/abs-tree/tree/master/gem2arch-ruby)
+SEE ALSO
+       pacman(8), makepkg(8), namcap(1), PKGBUILD(5)
