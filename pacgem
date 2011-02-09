@@ -1,14 +1,6 @@
 #!/usr/bin/ruby
 
-require 'tmpdir'
-require 'rubygems'
-require 'rubygems/user_interaction'
-require 'rubygems/format'
-require 'shellwords'
-require 'open-uri'
-require 'digest/sha2'
 require 'optparse'
-require 'fileutils'
 
 module Pacgem
   VERSION = '0.9'
@@ -337,6 +329,17 @@ module Pacgem
 
     private
 
+    def load_libraries
+      require 'tmpdir'
+      require 'rubygems'
+      require 'rubygems/user_interaction'
+      require 'rubygems/format'
+      require 'shellwords'
+      require 'open-uri'
+      require 'digest/sha2'
+      require 'fileutils'
+    end
+
     def process
       if @args.length < 1
         STDERR.puts 'You must specify at least one gem.'
@@ -350,6 +353,8 @@ module Pacgem
         @logger.error 'Aborted by user! Exiting...'
         exit 1
       end
+
+      load_libraries
 
       if @options[:destdir]
         dir = File.expand_path(@options[:destdir])
