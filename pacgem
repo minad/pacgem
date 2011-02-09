@@ -11,7 +11,7 @@ require 'optparse'
 require 'fileutils'
 
 module Pacgem
-  VERSION = '0.8'
+  VERSION = '0.9'
 
   module Util
     def which?(name)
