@@ -2,15 +2,15 @@
 
 pkgname=pacgem
 pkgver=0.9.1
-pkgrel=1
+pkgrel=2
 pkgdesc="Install Ruby Gems as Arch Linux packages"
 arch=('any')
 url="http://github.com/minad/pacgem"
 license=('GPL')
 depends=('ruby')
 source=('pacgem' 'pacgem.8')
-sha256sums=('34973fe5327396dc9f4571efe6d6643202f34483ee5be031d578a02a88851fd4'
-            '50d70c1a35ffe9ea4157dc6d1245aa8b47e3aacb7dd1410ecebfa3ac8c746a2e')
+sha256sums=('441db873f1a1eaa7d005f0c1ad70661336c0ae28a355eac70356fa1ddc27103e'
+            '590d462cdc7a66854b009f195d83038d1a992a2b9eea520374a7d3f986ff0a88')
 conflicts=('pacgem-git')
 
 build() {
