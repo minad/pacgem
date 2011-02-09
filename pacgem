@@ -342,12 +342,14 @@ module Pacgem
 
     def process
       if @args.length < 1
-        STDERR.puts 'You must specify at least one gem.'
-        STDERR.puts @opts
+        STDERR.puts 'Error: No operation specified (use -h for help)'
         exit 1
       end
 
-      raise 'You must not be root to run pacgem!' if Process.uid == 0
+      if Process.uid == 0
+        STDERR.puts 'Error: You cannot perform this operation if you are root.'
+        exit 1
+      end
 
       trap :SIGINT do
         @logger.error 'Aborted by user! Exiting...'
