@@ -2,6 +2,7 @@
 
 require 'tmpdir'
 require 'rubygems'
+require 'rubygems/user_interaction'
 require 'rubygems/format'
 require 'shellwords'
 require 'open-uri'
