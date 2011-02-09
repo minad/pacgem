@@ -34,9 +34,9 @@ EXAMPLES
 
        pacgem rake-1.0            Create temporary ruby-rake package and install it
 
-       pacgem 'rake>1.0'          Different version specification
+       pacgem 'rake>1.0'          Install ruby-rake version > 1.0
 
-       pacgem thin 'rake~>1.0'    Different version specification
+       pacgem thin 'rake~>1.0'    Install ruby-thin and ruby-rake with version ~>1.0
 
 AUTHOR
        Daniel Mendler (mail at daniel-mendler.de)
