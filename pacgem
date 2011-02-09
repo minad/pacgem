@@ -390,10 +390,10 @@ module Pacgem
 Pacgem installs Ruby Gems using the Arch Linux Package Manager (pacman).
 
 Examples:
-    pacgem --create rake       Create ruby-rake package in the directory ./ruby-rake
-    pacgem rake-1.0            Create temporary ruby-rake package and install it
-    pacgem 'rake>1.0'          Install ruby-rake version > 1.0
-    pacgem thin 'rake~>1.0'    Install ruby-thin and ruby-rake with version ~>1.0
+    pacgem --create rake             Create ruby-rake package in the directory ./ruby-rake
+    pacgem rake-1.0                  Create temporary ruby-rake package and install it
+    pacgem 'rake>1.0'                Install ruby-rake version > 1.0
+    pacgem thin 'rake~>1.0'          Install ruby-thin and ruby-rake with version ~>1.0
 
 Options:
 }
