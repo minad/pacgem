@@ -11,6 +11,7 @@ depends=('ruby')
 source=('pacgem' 'pacgem.8')
 sha256sums=('efa85da1069a847cb6e43f7c576bcfce38f8daf92ee86f5bd59c8643a2601772'
 	    '8edcc708e912b8b2d6ba18f829c5dd9649cba191c708c20579de5fad0c96778f')
+conflicts=('pacgem-git')
 
 build() {
   install -D -m755 $srcdir/pacgem $pkgdir/usr/bin/pacgem
