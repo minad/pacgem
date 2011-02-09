@@ -3,7 +3,7 @@
 require 'optparse'
 
 module Pacgem
-  VERSION = '0.9'
+  VERSION = '0.9.1'
 
   module Util
     def which?(name)
