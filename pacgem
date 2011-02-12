@@ -169,7 +169,7 @@ module Pacgem
     private
 
     def build_name(gemname)
-      "#{Package.ruby}-#{gemname.downcase.tr('_', '-')}"
+      "#{Package.ruby}-#{gemname.downcase.sub(/^ruby-/, '').tr('_', '-')}"
     end
 
     def pacman_parse(args)
