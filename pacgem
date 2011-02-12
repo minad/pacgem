@@ -161,7 +161,11 @@ module Pacgem
         gemfile = download
         gen_pkgbuild(gemfile, options)
         pkgfile = makepkg(options)
-        namcap(pkgfile, logger)
+        if options[:nonamcap]
+          logger.warning "Skipping namcap checks."
+        else
+          namcap(pkgfile, logger)
+        end
         installpkg(pkgfile, logger) unless options[:create]
       end
     end
@@ -411,6 +415,10 @@ Options:
 
       opts.on('--noautodepends', :NONE, 'Disable automatic dependency generation for shared objects (*.so)') do
         @options[:noautodepends] = true
+      end
+
+      opts.on('--nonamcap', :NONE, 'Disable package checking with namcap') do
+        @options[:nonamcap] = true
       end
 
       opts.on('--nocolor', :NONE, 'Disable colored output') do
