@@ -14,8 +14,14 @@ DESCRIPTION
        -c, --create
               Create package only, do not install
 
+       -u, --update
+              Update all installed gems
+
        --noautodepends
               Disable automatic dependency generation for shared objects (*.so)
+
+       --nonamcap
+              Disable package checking with namcap
 
        --nocolor
               Disable colored output
