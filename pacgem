@@ -34,6 +34,14 @@ module Pacgem
       `LC_ALL=C pacman #{args} 2>/dev/null`
     end
 
+    def each_gem
+      Gem.source_index.gems.sort.each do |_, spec|
+        name = pacman_parse("-Qqo #{spec.loaded_from.shellescape}").chomp
+        yield(spec, name.empty? ? nil : name, !name.empty? &&
+              !pacman_parse("-Qi #{name.shellescape}").match(/^Groups\s+:\s+pacgem$/).nil?)
+      end
+    end
+
     extend self
   end
 
@@ -308,14 +316,13 @@ module Pacgem
     end
 
     def update
-      Gem.source_index.each do |_, spec|
-        name = pacman_parse("-Qqo #{spec.loaded_from.shellescape}").chomp
-        if name.empty?
-          @logger.msg2 "Not managed by pacman: #{spec.full_name}"
-        elsif pacman_parse("-Qi #{name.shellescape}") !~ /^Groups\s+:\s+pacgem$/
+      each_gem do |spec, name, pacgem|
+        if pacgem
+          resolve(Gem::Dependency.new(spec.name, nil))
+        elsif name
           @logger.msg2 "Not installed by pacgem: #{spec.full_name} (Package #{name})"
         else
-          resolve(Gem::Dependency.new(spec.name, nil))
+          @logger.msg2 "Not managed by pacman: #{spec.full_name}"
         end
       end
     end
