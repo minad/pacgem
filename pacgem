@@ -522,7 +522,12 @@ _gem_fix() {
   local mandir="$_gemdir/gems/$_gemname-$pkgver/man"
   if [[ -d $mandir ]]; then
     install -d -m755 $_mandir
-    mv $mandir/* $_mandir
+    for file in $(find $mandir -type f -and -name *.[0-9]); do
+      dir=$_mandir/man${file##*.}
+      install -d -m755 $dir
+      mv $file $dir
+    done
+    rm -rf $mandir
   fi
 
   # Remove cached gem file
