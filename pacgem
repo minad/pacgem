@@ -238,7 +238,7 @@ module Pacgem
         optdepends << "#{build_name dep.name}: #{truncate(optspec.summary, 80)}" if optspec
       end
 
-      builder = %w(install fix)
+      builder = %w(install man license fix)
       unless spec.extensions.empty?
         builder << 'cleanext'
         builder << 'autodepends' unless options[:noautodepends]
@@ -512,11 +512,8 @@ _gem_install() {
                 --bindir $_bindir --install-dir $_gemdir "$srcdir/$_gemname-$pkgver.gem"
 }
 
-_gem_fix() {
-  msg 'Fixing gem installation...'
-
-  # Set mode of executables to 755
-  [[ -d "$_gemdir/bin" ]] && find "$_gemdir/bin" -type f -exec chmod 755 -- '{}' ';'
+_gem_man() {
+  msg 'Installing man pages...'
 
   # Find man pages and move them to the correct directory
   local mandir="$_gemdir/gems/$_gemname-$pkgver/man"
@@ -529,6 +526,53 @@ _gem_fix() {
     done
     rm -rf $mandir
   fi
+}
+
+_gem_license() {
+  msg 'Installing license...'
+
+  # Try to find and install custom license
+  shopt -s nocasematch
+  for license in "${license[@]}"; do
+    custom_license=1
+
+    # Check if this a common license
+    for common in /usr/share/licenses/common/*; do
+      common=$(basename "$common")
+
+      # Some gems use sth like "LGPL-2.1" while pacman calls it "LGPL2.1",
+      # so check both variants...
+      for variant in "$common" "${common/-/}"; do
+        if [[ "$license" =~ "$variant" ]]; then
+          custom_license=0
+          break
+        fi
+      done
+    done
+
+    if (( $custom_license )); then
+      # Check for a variety of possible license file names and install
+      # the first match into the appropriate license dir...
+      candidates=("$license" "${license}.txt" "${license}-COPYING" "${license}-COPYING.txt"\
+                  "${license}-LICENSE" "${license}-LICENSE.txt" "COPYING" "COPYING.txt" "LICENSE" "LICENSE.txt")
+      for file in "${candidates[@]}"; do
+        file="$_gemdir/gems/$_gemname-$pkgver/$file"
+        echo $file
+        if [[ -f "$file" ]]; then
+          install -D -m644 "$file" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+          break
+        fi
+      done
+    fi
+  done
+  shopt -u nocasematch
+}
+
+_gem_fix() {
+  msg 'Fixing gem installation...'
+
+  # Set mode of executables to 755
+  [[ -d "$_gemdir/bin" ]] && find "$_gemdir/bin" -type f -exec chmod 755 -- '{}' ';'
 
   # Remove cached gem file
   rm -f "$_gemdir/cache/$_gemname-$pkgver.gem"
