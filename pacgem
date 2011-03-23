@@ -244,26 +244,29 @@ module Pacgem
         builder << 'autodepends' unless options[:noautodepends]
       end
 
+      license, license_file = find_license(spec.licenses, spec.files)
+
       pkg = PkgBuild.new
-      pkg['_gemname']    = spec.name
-      pkg['_gembuilder'] = builder
-      pkg['_ruby']       = Gem.ruby
-      pkg['_gem']        = File.join(File.dirname(Gem.ruby), 'gem')
-      pkg['pkgname']     = name
-      pkg['pkgver']      = spec.version.to_s
-      pkg['pkgrel']      = 1
-      pkg['pkgdesc']     = spec.summary
-      pkg['arch']        = spec.extensions.empty? ? %w(any) : %w(i686 x86_64)
-      pkg['url']         = spec.homepage
-      pkg['license']     = spec.licenses.empty? ? %w(Ruby) : spec.licenses
-      pkg['groups']      = %w(pacgem) # Mark this package as installed by pacgem
-      pkg['makedepends'] = %W(#{ruby_package} binutils)
-      pkg['depends']     = depends
-      pkg['optdepends']  = optdepends
-      pkg['source']      = %W(#{uri}gems/$_gemname-$pkgver.gem)
-      pkg['sha256sums']  = [Digest::SHA2.file(gemfile).to_s]
-      pkg['noextract']   = %w($_gemname-$pkgver.gem)
-      pkg['options']     = %w(!emptydirs)
+      pkg['_gemname']     = spec.name
+      pkg['_gembuilder']  = builder
+      pkg['_ruby']        = Gem.ruby
+      pkg['_gem']         = File.join(File.dirname(Gem.ruby), 'gem')
+      pkg['pkgname']      = name
+      pkg['pkgver']       = spec.version.to_s
+      pkg['pkgrel']       = 1
+      pkg['pkgdesc']      = spec.summary
+      pkg['arch']         = spec.extensions.empty? ? %w(any) : %w(i686 x86_64)
+      pkg['url']          = spec.homepage
+      pkg['license']      = license
+      pkg['_licensefile'] = license_file
+      pkg['groups']       = %w(pacgem) # Mark this package as installed by pacgem
+      pkg['makedepends']  = %W(#{ruby_package} binutils)
+      pkg['depends']      = depends
+      pkg['optdepends']   = optdepends
+      pkg['source']       = %W(#{uri}gems/$_gemname-$pkgver.gem)
+      pkg['sha256sums']   = [Digest::SHA2.file(gemfile).to_s]
+      pkg['noextract']    = %w($_gemname-$pkgver.gem)
+      pkg['options']      = %w(!emptydirs)
       pkg.save
     end
 
@@ -295,6 +298,36 @@ module Pacgem
       else
         system("su -c #{cmd.shellescape}")
       end
+    end
+
+    def find_license(licenses, files)
+      custom = []
+      licenses = %w(Ruby) if licenses.empty?
+      licenses = licenses.map do |license|
+        # Check if this a common license
+        common = Dir['/usr/share/licenses/common/*'].map {|f| File.basename(f) }.find do |f|
+          f.casecmp(license.gsub('-', '')) == 0
+        end
+        if common
+          common
+        else
+          custom << find_custom_license(license, files)
+          "custom:#{license}"
+        end
+      end
+      [licenses, custom.compact.uniq]
+    end
+
+    def find_custom_license(name, files)
+      prefix = ['', "#{name}-"]
+      names = %w(COPYING LICENSE COPYRIGHT)
+      suffix = ['', '.txt']
+      prefix.product(names, suffix).map {|a| a.join }.each do |candidate|
+        files.each do |file|
+          return file if file.casecmp(candidate) == 0
+        end
+      end
+      nil
     end
   end
 
@@ -519,8 +552,9 @@ _gem_man() {
   local mandir="$_gemdir/gems/$_gemname-$pkgver/man"
   if [[ -d $mandir ]]; then
     install -d -m755 $_mandir
+    local file
     for file in $(find $mandir -type f -and -name *.[0-9]); do
-      dir=$_mandir/man${file##*.}
+      local dir=$_mandir/man${file##*.}
       install -d -m755 $dir
       mv $file $dir
     done
@@ -529,41 +563,14 @@ _gem_man() {
 }
 
 _gem_license() {
-  # Try to find and install custom license
-  shopt -s nocasematch
-  for license in "${license[@]}"; do
-    custom_license=1
-
-    # Check if this a common license
-    for common in /usr/share/licenses/common/*; do
-      common=$(basename "$common")
-
-      # Some gems use sth like "LGPL-2.1" while pacman calls it "LGPL2.1",
-      # so check both variants...
-      for variant in "$common" "${common/-/}"; do
-        if [[ "$license" =~ "$variant" ]]; then
-          custom_license=0
-          break
-        fi
-      done
+  if [[ "${#_licensefile[@]}" -ne 0 ]]; then
+    msg "Installing license $license..."
+    install -d -m755 "$pkgdir/usr/share/licenses/$pkgname"
+    local file
+    for file in ${_licensefile[@]}; do
+      ln -s "../../../..$_gemdestdir/gems/$_gemname-$pkgver/$file"  "$pkgdir/usr/share/licenses/$pkgname/$file"
     done
-
-    if (( $custom_license )); then
-      # Check for a variety of possible license file names and install
-      # the first match into the appropriate license dir...
-      candidates=("$license" "${license}.txt" "${license}-COPYING" "${license}-COPYING.txt"\
-                  "${license}-LICENSE" "${license}-LICENSE.txt" "COPYING" "COPYING.txt" "LICENSE" "LICENSE.txt")
-      for file in "${candidates[@]}"; do
-        file="$_gemdir/gems/$_gemname-$pkgver/$file"
-        if [[ -f "$file" ]]; then
-          msg "Installing custom license $license..."
-          install -D -m644 "$file" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
-          break
-        fi
-      done
-    fi
-  done
-  shopt -u nocasematch
+  fi
 }
 
 _gem_fix() {
@@ -639,7 +646,8 @@ _rbconfig() {
 build() {
   # Directories defined inside build() because if ruby is not installed on the system
   # makepkg will barf when sourcing the PKGBUILD
-  _gemdir=$pkgdir$($_gem environment gemdir)
+  _gemdestdir=$($_gem environment gemdir)
+  _gemdir=$pkgdir$_gemdestdir
   _bindir=$pkgdir$(_rbconfig bindir)
   _mandir=$pkgdir$(_rbconfig mandir)
 
