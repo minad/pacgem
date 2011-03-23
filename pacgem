@@ -283,7 +283,7 @@ module Pacgem
 
     def installpkg(pkgfile, logger)
       logger.msg "Installing #{pkgfile} with pacman..."
-      pacman_parse('-v') =~ /^Lock File\s+:\s+(.*)$/
+      pacman_parse('-Qv') =~ /^Lock File\s+:\s+(.*)$/
       lockfile = $1
       if File.exists?(lockfile)
         logger.msg2 'Pacman is currently in use, please wait.'
