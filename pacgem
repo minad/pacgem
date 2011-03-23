@@ -529,8 +529,6 @@ _gem_man() {
 }
 
 _gem_license() {
-  msg 'Installing license...'
-
   # Try to find and install custom license
   shopt -s nocasematch
   for license in "${license[@]}"; do
@@ -557,8 +555,8 @@ _gem_license() {
                   "${license}-LICENSE" "${license}-LICENSE.txt" "COPYING" "COPYING.txt" "LICENSE" "LICENSE.txt")
       for file in "${candidates[@]}"; do
         file="$_gemdir/gems/$_gemname-$pkgver/$file"
-        echo $file
         if [[ -f "$file" ]]; then
+          msg "Installing custom license $license..."
           install -D -m644 "$file" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
           break
         fi
