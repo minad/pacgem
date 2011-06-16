@@ -346,8 +346,11 @@ module Pacgem
 
     def install(name, version = nil)
       resolve(Gem::Dependency.new(name, version)).explicit = true
+      if @options[:resolve]
+        exit
+      end
     end
-
+     
     def update
       each_gem do |spec, name, pacgem|
         if pacgem
@@ -418,9 +421,9 @@ module Pacgem
     end
 
     def process
-      if @options[:update]
+      if @options[:update] || @options[:test]
         if !@args.empty?
-          STDERR.puts 'Error: --update accepts no arguments.'
+          STDERR.puts 'Error: --update and --test accept no arguments.'
           exit 1
         end
       elsif @args.length < 1
@@ -452,8 +455,11 @@ module Pacgem
         Dir.chdir(dir) do
           installer = Installer.new(@options, @logger)
           @logger.msg 'Resolving gems...'
-          if @options[:update]
+          if @options[:update] || @options[:test]
             installer.update
+            if @options[:test]
+              exit
+            end
           else
             @args.each do |gem|
               if gem =~ /^([-\w]+)((?:[<>]=?|=|~>|-)\d+(?:\.\d+)*)?$/
@@ -497,6 +503,14 @@ Options:
 
       opts.on('-u', '--update', :NONE, 'Update all installed gems') do
         @options[:update] = true
+      end
+      
+      opts.on('-t', '--test', :NONE, 'Check if there are any gems to update') do
+        @options[:test] = true
+      end
+      
+      opts.on('-r', '--resolve', :NONE, 'Resolve dependencies') do
+        @options[:resolve] = true
       end
 
       opts.on('--noautodepends', :NONE, 'Disable automatic dependency generation for shared objects (*.so)') do
