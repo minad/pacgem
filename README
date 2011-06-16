@@ -17,6 +17,12 @@ DESCRIPTION
        -u, --update
               Update all installed gems
 
+	   -t, --test
+	   		  Test if there are any gems to update
+
+		-r, --resolve
+		      Resolve the gem depencies
+
        --noautodepends
               Disable automatic dependency generation for shared objects (*.so)
 
