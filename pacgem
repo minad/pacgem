@@ -541,7 +541,7 @@ _gem_install() {
 
   # Install the gem
   install -d -m755 $_bindir $_gemdir
-  $_gem install --no-ri --no-rdoc --ignore-dependencies \
+  $_gem install --no-ri --no-rdoc --ignore-dependencies --no-user-install\
                 --bindir $_bindir --install-dir $_gemdir "$srcdir/$_gemname-$pkgver.gem"
 }
 
