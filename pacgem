@@ -357,7 +357,7 @@ module Pacgem
         exit
       end
     end
-     
+
     def update
       each_gem do |spec, name, pacgem|
         if pacgem
@@ -511,11 +511,11 @@ Options:
       opts.on('-u', '--update', :NONE, 'Update all installed gems') do
         @options[:update] = true
       end
-      
+
       opts.on('-t', '--test', :NONE, 'Check if there are any gems to update') do
         @options[:test] = true
       end
-      
+
       opts.on('-r', '--resolve', :NONE, 'Resolve dependencies') do
         @options[:resolve] = true
       end
