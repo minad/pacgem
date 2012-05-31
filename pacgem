@@ -1,4 +1,4 @@
-#!/usr/bin/ruby
+#!/usr/bin/env ruby
 
 require 'optparse'
 
@@ -225,10 +225,16 @@ module Pacgem
       spec = Gem::Format.from_file_by_path(gemfile).spec
 
       depends = [ruby_package]
+      conflicts = []
       spec.runtime_dependencies.each do |dep|
         dep.requirement.requirements.each do |comp, ver|
           comp = '>=' if comp == '~>'
-          depends << "#{build_name dep.name}#{comp}#{ver}"
+          if comp == '!='
+            depends << "#{build_name dep.name}"
+            conflicts << "#{build_name dep.name}=#{ver}"
+          else
+            depends << "#{build_name dep.name}#{comp}#{ver}"
+          end
         end
       end
 
@@ -262,6 +268,7 @@ module Pacgem
       pkg['groups']       = %w(pacgem) # Mark this package as installed by pacgem
       pkg['makedepends']  = %W(#{ruby_package} binutils)
       pkg['depends']      = depends
+      pkg['conflicts']    = conflicts
       pkg['optdepends']   = optdepends
       pkg['source']       = %W(#{uri}gems/$_gemname-$pkgver.gem)
       pkg['sha256sums']   = [Digest::SHA2.file(gemfile).to_s]
