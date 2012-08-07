@@ -353,7 +353,7 @@ module Pacgem
 
     def install(name, version = nil)
       resolve(Gem::Dependency.new(name, version)).explicit = true
-      if @options[:resolve]
+      if @options[:resolveonly]
         exit
       end
     end
@@ -384,7 +384,7 @@ module Pacgem
         else
           @logger.msg2 "(New) #{spec.full_name}: #{spec.summary}"
         end
-        spec.runtime_dependencies.each {|d| resolve(d) }
+        spec.runtime_dependencies.each {|d| resolve(d) } if !@options[:noresolve]
         @list << pkg if @options[:create] || !pkg.installed?
         pkg
       end
@@ -516,8 +516,12 @@ Options:
         @options[:test] = true
       end
 
-      opts.on('-r', '--resolve', :NONE, 'Resolve dependencies') do
-        @options[:resolve] = true
+      opts.on('-r', '--resolveonly', :NONE, 'Resolve dependencies only, don\'t install anything') do
+        @options[:resolveonly] = true
+      end
+
+      opts.on('-n', '--noresolve', :NONE, 'Do not resolve dependencies') do
+        @options[:noresolve] = true
       end
 
       opts.on('--noautodepends', :NONE, 'Disable automatic dependency generation for shared objects (*.so)') do
