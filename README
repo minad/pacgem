@@ -20,8 +20,11 @@ DESCRIPTION
        -t, --test
               Test if there are any gems to update
 
-       -r, --resolve
+       -r, --resolveonly
               Resolve the gem depencies and exit
+
+       -n, --noresolve
+              Do not resolve any dependencies, this is useful for generating (-create) a single package
 
        --noautodepends
               Disable automatic dependency generation for shared objects (*.so)
