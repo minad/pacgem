@@ -213,7 +213,7 @@ module Pacgem
 
     def download
       gemfile = "#{gemname}-#{version}.gem"
-      open("#{uri}/gems/#{gemfile}") do |i|
+      open("#{uri}gems/#{gemfile}") do |i|
         File.open(gemfile, 'w') do |o|
           FileUtils.copy_stream(i, o)
         end
