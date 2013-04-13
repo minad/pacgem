@@ -17,7 +17,7 @@ module Pacgem
         fetcher.fetch(dep, true).last
       else
         spec, source = fetcher.spec_for_dependency(dep, true).flatten.compact
-        [spec, source.uri]
+        spec && [spec, source.uri]
       end
     end
 
