@@ -288,6 +288,7 @@ module Pacgem
     end
 
     def makepkg(options)
+      ENV['PACKAGER'] = 'pacgem'
       system("makepkg -f #{options[:create] && '--nodeps'} #{options[:nocolor] && '--nocolor'}")
       Dir["#{name}-*.pkg.*"].first || raise("makepkg #{name} failed")
     end
@@ -338,10 +339,10 @@ module Pacgem
     def find_custom_license(name, files)
       prefix = ['', "#{name}-"]
       names = %w(COPYING LICENSE COPYRIGHT)
-      suffix = ['', '.txt']
+      suffix = ['', '.*']
       prefix.product(names, suffix).map {|a| a.join }.each do |candidate|
         files.each do |file|
-          return file if file.casecmp(candidate) == 0
+          return file if File.fnmatch(file, candidate, File::FNM_CASEFOLD)
         end
       end
       nil
