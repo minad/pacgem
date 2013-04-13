@@ -45,7 +45,7 @@ module Pacgem
     end
 
     def each_gem
-      Gem.source_index.gems.sort.each do |_, spec|
+      Gem::Specification.each do |spec|
         name = pacman_parse("-Qqo #{spec.loaded_from.shellescape}").chomp
         yield(spec, name.empty? ? nil : name, !name.empty? &&
               !pacman_parse("-Qi #{name.shellescape}").match(/^Groups\s+:\s+pacgem$/).nil?)
