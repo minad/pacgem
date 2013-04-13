@@ -1,7 +1,7 @@
 # Maintainer: Daniel Mendler <mail at daniel-mendler.de>
 # Contributor: Daniel Mendler <mail at daniel-mendler.de>
 pkgname=pacgem
-pkgver=0.9.6
+pkgver=0.9.7
 pkgrel=1
 pkgdesc="Install Ruby Gems as Arch Linux packages"
 arch=('any')
