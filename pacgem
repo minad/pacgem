@@ -260,7 +260,7 @@ module Pacgem
         builder << 'autodepends' unless options[:noautodepends]
       end
 
-      license, license_file = find_license(spec.licenses, spec.files)
+      license, license_file = find_license(name, spec)
 
       pkg = PkgBuild.new
       pkg['_gemname']     = spec.name
@@ -318,34 +318,23 @@ module Pacgem
       end
     end
 
-    def find_license(licenses, files)
-      custom = []
-      licenses = %w(Ruby) if licenses.empty?
-      licenses = licenses.map do |license|
-        # Check if this a common license
-        common = Dir['/usr/share/licenses/common/*'].map {|f| File.basename(f) }.find do |f|
-          f.casecmp(license.gsub('-', '')) == 0
-        end
-        if common
-          common
+    def find_license(name, spec)
+      custom = false
+      licenses =
+        if spec.licenses.empty?
+          custom = true
+          ["custom:#{name}"]
         else
-          custom << find_custom_license(license, files)
-          "custom:#{license}"
+          spec.licenses.map do |license|
+            # Check if this a common license
+            Dir['/usr/share/licenses/common/*'].map {|f| File.basename(f) }.find do |f|
+              f.casecmp(license.gsub('-', '')) == 0
+            end ||
+            %w(BSD MIT ZLIB Python).find {|f| f.casecmp(license) == 0 && (custom = true) } ||
+            (custom = "custom:#{license}")
+          end
         end
-      end
-      [licenses, custom.compact.uniq]
-    end
-
-    def find_custom_license(name, files)
-      prefix = ['', "#{name}-"]
-      names = %w(COPYING LICENSE COPYRIGHT)
-      suffix = ['', '.*']
-      prefix.product(names, suffix).map {|a| a.join }.each do |candidate|
-        files.each do |file|
-          return file if File.fnmatch(file, candidate, File::FNM_CASEFOLD)
-        end
-      end
-      nil
+      [licenses, custom ? spec.files.select {|f| %w(COPYING LICENSE COPYRIGHT).any? {|s| f =~ /#{s}/i } } : []]
     end
   end
 
