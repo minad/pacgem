@@ -14,9 +14,11 @@ module Pacgem
     def fetch_dep(dep)
       fetcher = Gem::SpecFetcher.fetcher
       if fetcher.respond_to? :fetch
+        # Pre Ruby 2.0 gem spec fetcher
         fetcher.fetch(dep, true).last
       else
-        spec, source = fetcher.spec_for_dependency(dep, true).flatten.compact
+        # Ruby 2.0 and newer
+        spec, source = fetcher.spec_for_dependency(dep, true).first.last
         spec && [spec, source.uri]
       end
     end
@@ -232,6 +234,7 @@ module Pacgem
     end
 
     def gen_pkgbuild(gemfile, options)
+      # Gem::Format is pre 2.0, Gem::Package is the new API
       spec = defined?(Gem::Format) ? Gem::Format.from_file_by_path(gemfile).spec : Gem::Package.new(gemfile).spec
 
       depends = [ruby_package]
