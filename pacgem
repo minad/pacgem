@@ -11,7 +11,7 @@ module Pacgem
       $?.success?
     end
 
-    def fetch_dep(dep)
+    def fetch_spec(dep)
       fetcher = Gem::SpecFetcher.fetcher
       if fetcher.respond_to? :fetch
         # Pre Ruby 2.0 gem spec fetcher
@@ -191,18 +191,11 @@ module Pacgem
       @explicit
     end
 
-    def find_installed(logger)
-      spec = Gem::Specification.find_by_name(gemname)
-      specversion = spec && spec.version
-
-      output = pacman_parse("-Q #{name.shellescape}").strip.split(/\s+/, 2)
-      output[1] =~ /^(.*?)\-\d+$/
-      pkgversion = $1
-
-      if pkgversion && specversion != pkgversion
-        logger.warning "Gem version #{specversion} disagrees with package version #{pkgversion}"
-      end
-      [pkgversion, pkgversion ? nil : specversion]
+    def find_installed(name = gemname)
+      spec = Gem::Dependency.new(name, nil).to_spec
+      pkg = pacman_parse("-Qqo #{spec.loaded_from.shellescape}")
+      [pkg.chomp, spec.version]
+    rescue Exception
     end
 
     def install(options, logger)
@@ -243,20 +236,26 @@ module Pacgem
       depends = [ruby_package]
       conflicts = []
       spec.runtime_dependencies.each do |dep|
-        dep.requirement.requirements.each do |comp, ver|
-          comp = '>=' if comp == '~>'
-          if comp == '!='
-            depends << "#{build_name dep.name}"
-            conflicts << "#{build_name dep.name}=#{ver}"
-          else
-            depends << "#{build_name dep.name}#{comp}#{ver}"
+        owner_pkg, installed_version = find_installed(dep.name)
+        pkgname = build_name(dep.name)
+        if owner_pkg && owner_pkg != pkgname
+          depends << owner_pkg
+        else
+          dep.requirement.requirements.each do |comp, ver|
+            comp = '>=' if comp == '~>'
+            if comp == '!='
+              depends << pkgname
+              conflicts << "#{pkgname}=#{ver}"
+            else
+              depends << "#{pkgname}#{comp}#{ver}"
+            end
           end
         end
       end
 
       optdepends = []
       spec.development_dependencies.each do |dep|
-        optspec, opturi = fetch_dep(dep)
+        optspec, opturi = fetch_spec(dep)
         optdepends << "#{build_name dep.name}: #{truncate(optspec.summary, 80)}" if optspec
       end
 
@@ -381,15 +380,15 @@ module Pacgem
     def resolve(dep)
       @packages[dep.name] ||=
         begin
-          spec, uri = fetch_dep(dep)
+          spec, uri = fetch_spec(dep)
           raise "Gem #{dep} not found" unless spec
           pkg = Package.new(dep.name, spec.version, uri)
           install = @options[:create]
-          installed_version, system_version = pkg.find_installed(@logger)
-          if system_version
-            @logger.msg2 "(System installation) #{pkg.gemname}-#{system_version}"
-          elsif installed_version
-            if installed_version == pkg.version
+          owner_pkg, installed_version = pkg.find_installed
+          if installed_version
+            if owner_pkg != pkg.name
+              @logger.msg2 "(Installed with #{owner_pkg}) #{pkg.gemname}-#{installed_version}: #{spec.summary}"
+            elsif installed_version == pkg.version
               @logger.msg2 "(Up-to-date) #{spec.full_name}: #{spec.summary}"
             else
               @logger.msg2 "(Update from #{installed_version}) #{spec.full_name}: #{spec.summary}"
