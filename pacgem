@@ -33,8 +33,10 @@ module Pacgem
     end
 
     def ruby_package
-      @ruby_package ||= if RUBY_VERSION > '1.9'
+      @ruby_package ||= if RUBY_VERSION > '2.0'
                           'ruby'
+                        elsif RUBY_VERSION > '1.9'
+                          'ruby1.9'
                         elsif Gem.ruby.include?('ruby-enterprise')
                           'ruby-enterprise'
                         else
