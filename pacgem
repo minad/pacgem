@@ -191,17 +191,18 @@ module Pacgem
       @explicit
     end
 
-    def installed_version
-      unless instance_variable_defined?(:@installed_version)
-        installed = pacman_parse("-Q #{name.shellescape}").strip.split(/\s+/, 2)
-        installed[1] =~ /^(.*?)\-\d+$/
-        @installed_version = $1
-      end
-      @installed_version
-    end
+    def find_installed(logger)
+      spec = Gem::Specification.find_by_name(gemname)
+      specversion = spec && spec.version
 
-    def installed?
-      installed_version == version
+      output = pacman_parse("-Q #{name.shellescape}").strip.split(/\s+/, 2)
+      output[1] =~ /^(.*?)\-\d+$/
+      pkgversion = $1
+
+      if pkgversion && specversion != pkgversion
+        logger.warning "Gem version #{specversion} disagrees with package version #{pkgversion}"
+      end
+      [pkgversion, pkgversion ? nil : specversion]
     end
 
     def install(options, logger)
@@ -211,7 +212,7 @@ module Pacgem
         gen_pkgbuild(gemfile, options)
         pkgfile = makepkg(options)
         if options[:nonamcap]
-          logger.warning "Skipping namcap checks."
+          logger.warning 'Skipping namcap checks.'
         else
           namcap(pkgfile, logger)
         end
@@ -378,21 +379,30 @@ module Pacgem
     private
 
     def resolve(dep)
-      @packages[dep.name] ||= begin
-        spec, uri = fetch_dep(dep)
-        raise "Gem #{dep} not found" unless spec
-        pkg = Package.new(dep.name, spec.version, uri)
-        if pkg.installed?
-          @logger.msg2 "(Up-to-date) #{spec.full_name}: #{spec.summary}"
-        elsif pkg.installed_version
-          @logger.msg2 "(Update from #{pkg.installed_version}) #{spec.full_name}: #{spec.summary}"
-        else
-          @logger.msg2 "(New) #{spec.full_name}: #{spec.summary}"
+      @packages[dep.name] ||=
+        begin
+          spec, uri = fetch_dep(dep)
+          raise "Gem #{dep} not found" unless spec
+          pkg = Package.new(dep.name, spec.version, uri)
+          install = @options[:create]
+          installed_version, system_version = pkg.find_installed(@logger)
+          if system_version
+            @logger.msg2 "(System installation) #{pkg.gemname}-#{system_version}"
+          elsif installed_version
+            if installed_version == pkg.version
+              @logger.msg2 "(Up-to-date) #{spec.full_name}: #{spec.summary}"
+            else
+              @logger.msg2 "(Update from #{installed_version}) #{spec.full_name}: #{spec.summary}"
+              install = true
+            end
+          else
+            @logger.msg2 "(New) #{spec.full_name}: #{spec.summary}"
+            install = true
+          end
+          spec.runtime_dependencies.each {|d| resolve(d) } if !@options[:noresolve]
+          @list << pkg if install
+          pkg
         end
-        spec.runtime_dependencies.each {|d| resolve(d) } if !@options[:noresolve]
-        @list << pkg if @options[:create] || !pkg.installed?
-        pkg
-      end
     end
   end
 
