@@ -48,14 +48,6 @@ module Pacgem
       `LC_ALL=C pacman #{args} 2>/dev/null`
     end
 
-    def each_gem
-      Gem::Specification.each do |spec|
-        name = pacman_parse("-Qqo #{spec.loaded_from.shellescape}").chomp
-        yield(spec, name.empty? ? nil : name, !name.empty? &&
-              !pacman_parse("-Qi #{name.shellescape}").match(/^Groups\s+:\s+pacgem$/).nil?)
-      end
-    end
-
     extend self
   end
 
@@ -364,14 +356,8 @@ module Pacgem
     end
 
     def update
-      each_gem do |spec, name, pacgem|
-        if pacgem
-          resolve(Gem::Dependency.new(spec.name, nil))
-        elsif name
-          @logger.msg2 "Not installed by pacgem: #{spec.full_name} (Package #{name})"
-        else
-          @logger.msg2 "Not managed by pacman: #{spec.full_name}"
-        end
+      Gem::Specification.each do |spec|
+        resolve(Gem::Dependency.new(spec.name, nil))
       end
     end
 
@@ -386,8 +372,8 @@ module Pacgem
           install = @options[:create]
           owner_pkg, installed_version = pkg.find_installed
           if installed_version
-            if owner_pkg != pkg.name
-              @logger.msg2 "(Installed with #{owner_pkg}) #{pkg.gemname}-#{installed_version}: #{spec.summary}"
+            if owner_pkg != pkg.name || pacman_parse("-Qi #{pkg.name.shellescape}").match(/^Groups\s+:\s+pacgem$/).nil?
+              @logger.msg2 "(Not installed with pacgem, part of #{owner_pkg}) #{pkg.gemname}-#{installed_version}: #{spec.summary}"
             elsif installed_version == pkg.version
               @logger.msg2 "(Up-to-date) #{spec.full_name}: #{spec.summary}"
             else
@@ -443,6 +429,10 @@ module Pacgem
       require 'open-uri'
       require 'digest/sha2'
       require 'fileutils'
+
+      # Perform only operation on global gems
+      Gem::Specification.dirs = Gem::Specification.dirs.select {|dir| dir =~ %r{\A/usr} }
+      raise 'No system gem directory found - are you using local ruby installation (rvm, rbenv, ...)?' if Gem::Specification.dirs.empty?
     end
 
     def process
