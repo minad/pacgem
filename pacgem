@@ -186,7 +186,7 @@ module Pacgem
     def find_installed(name = gemname)
       spec = Gem::Dependency.new(name, nil).to_spec
       pkg = pacman_parse("-Qqo #{spec.loaded_from.shellescape}")
-      [pkg.chomp, spec.version]
+      [pkg.chomp, spec.version.to_s]
     rescue Exception
     end
 
