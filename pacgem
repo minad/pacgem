@@ -431,7 +431,7 @@ module Pacgem
       require 'fileutils'
 
       # Perform only operation on global gems
-      Gem::Specification.dirs = Gem::Specification.dirs.select {|dir| dir =~ %r{\A/usr} }
+      Gem::Specification.dirs.reject! {|dir| dir !~ %r{\A/usr} }
       raise 'No system gem directory found - are you using local ruby installation (rvm, rbenv, ...)?' if Gem::Specification.dirs.empty?
     end
 
