@@ -45,13 +45,13 @@ DESCRIPTION
               Display version and exit
 
 EXAMPLES
-       pacgem --create rake       Create ruby-rake package in the directory ./ruby-rake
+       pacgem --create slim       Create ruby-slim package in the directory ./ruby-slim
 
-       pacgem rake-1.0            Create temporary ruby-rake package and install it
+       pacgem slim-1.0            Create temporary ruby-slim package and install it
 
-       pacgem 'rake>1.0'          Install ruby-rake version > 1.0
+       pacgem 'slim>1.0'          Install ruby-slim version > 1.0
 
-       pacgem thin 'rake~>1.0'    Install ruby-thin and ruby-rake with version ~>1.0
+       pacgem thin 'slim~>1.0'    Install ruby-thin and ruby-slim with version ~>1.0
 
 AUTHOR
        Daniel Mendler (mail at daniel-mendler.de)
