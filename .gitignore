@@ -1,4 +1,5 @@
 pkg
 src
+ruby-*
 *.pkg.tar.xz
 *.src.tar.gz
