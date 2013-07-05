@@ -11,6 +11,14 @@ module Pacgem
       $?.success?
     end
 
+    def reset_rubygems
+      Gem::Specification.reset
+
+      # Perform only operation on global gems
+      Gem::Specification.dirs.reject! {|dir| dir !~ %r{\A/usr} }
+      raise 'No system gem directory found - are you using local ruby installation (rvm, rbenv, ...)?' if Gem::Specification.dirs.empty?
+    end
+
     def fetch_spec(dep)
       fetcher = Gem::SpecFetcher.fetcher
       if fetcher.respond_to? :fetch
@@ -184,9 +192,10 @@ module Pacgem
     end
 
     def find_installed(name = gemname)
+      reset_rubygems
       spec = Gem::Dependency.new(name, nil).to_spec
-      pkg = pacman_parse("-Qqo #{spec.loaded_from.shellescape}")
-      [pkg.chomp, spec.version.to_s]
+      pkg = pacman_parse("-Qqo #{spec.loaded_from.shellescape}").chomp
+      pkg.empty? ? nil : [pkg, spec.version.to_s]
     rescue Exception
     end
 
@@ -248,8 +257,12 @@ module Pacgem
       optdepends = []
       spec.development_dependencies.each do |dep|
         optspec, opturi = fetch_spec(dep)
-        optdepends << "#{build_name dep.name}: #{truncate(optspec.summary, 80)}" if optspec
+        optdepends << "#{build_name dep.name}: #{truncate(optspec.summary, 80)} (Development dependency)" if optspec
       end
+
+      depends.uniq!
+      conflicts.uniq!
+      optdepends.uniq!
 
       builder = %w(install man license fix)
       unless spec.extensions.empty?
@@ -356,6 +369,7 @@ module Pacgem
     end
 
     def update
+      reset_rubygems
       Gem::Specification.each do |spec|
         resolve(Gem::Dependency.new(spec.name, nil))
       end
@@ -392,6 +406,8 @@ module Pacgem
   end
 
   class Command
+    include Util
+
     def initialize(args)
       @args = args
       @options = {}
@@ -430,9 +446,7 @@ module Pacgem
       require 'digest/sha2'
       require 'fileutils'
 
-      # Perform only operation on global gems
-      Gem::Specification.dirs.reject! {|dir| dir !~ %r{\A/usr} }
-      raise 'No system gem directory found - are you using local ruby installation (rvm, rbenv, ...)?' if Gem::Specification.dirs.empty?
+      reset_rubygems
     end
 
     def process
