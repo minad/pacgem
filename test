@@ -1,0 +1,28 @@
+#!/bin/sh
+./pacgem -c rails=4.0.0
+./pacgem -c rails=3.2.13
+./pacgem -c thor
+./pacgem -c rack
+./pacgem -c tilt
+./pacgem -c bundler
+./pacgem -c rdoc
+./pacgem -c nokogiri
+./pacgem -c rspec
+./pacgem -c ffi
+./pacgem -c eventmachine
+./pacgem -c thin
+./pacgem -c unicorn
+./pacgem -c sqlite3
+./pacgem -c hpricot
+./pacgem -c fastthread
+
+
+
+
+
+
+
+
+
+
+
