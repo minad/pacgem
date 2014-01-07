@@ -41,15 +41,20 @@ module Pacgem
     end
 
     def ruby_package
-      @ruby_package ||= if RUBY_VERSION > '2.0'
-                          'ruby'
-                        elsif RUBY_VERSION > '1.9'
-                          'ruby1.9'
-                        elsif Gem.ruby.include?('ruby-enterprise')
-                          'ruby-enterprise'
-                        else
-                          'ruby1.8'
-                        end
+      @ruby_package ||=
+        if defined? JRUBY_VERSION
+          'jruby'
+        elsif defined? RBX_VERSION
+          'rubinius'
+        elsif RUBY_VERSION > '2.0'
+          'ruby'
+        elsif RUBY_VERSION > '1.9'
+          'ruby1.9'
+        elsif Gem.ruby.include?('ruby-enterprise')
+          'ruby-enterprise'
+        else
+          'ruby1.8'
+        end
     end
 
     def pacman_parse(args)
