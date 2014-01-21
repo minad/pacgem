@@ -285,6 +285,7 @@ module Pacgem
       pkg['pkgname']      = name
       pkg['pkgver']       = spec.version.to_s
       pkg['pkgrel']       = 1
+      pkg['epoch']        = 1
       pkg['pkgdesc']      = spec.summary
       pkg['arch']         = spec.extensions.empty? ? %w(any) : %w(i686 x86_64)
       pkg['url']          = spec.homepage
