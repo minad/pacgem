@@ -46,8 +46,10 @@ module Pacgem
           'jruby'
         elsif defined? RBX_VERSION
           'rubinius'
-        elsif RUBY_VERSION > '2.0'
+        elsif RUBY_VERSION > '2.1'
           'ruby'
+        elsif RUBY_VERSION > '2.0'
+          'ruby2.0'
         elsif RUBY_VERSION > '1.9'
           'ruby1.9'
         elsif Gem.ruby.include?('ruby-enterprise')
