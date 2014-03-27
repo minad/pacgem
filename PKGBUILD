@@ -9,7 +9,7 @@ url="http://github.com/minad/pacgem"
 license=('GPL')
 depends=('ruby')
 source=('pacgem' 'pacgem.8')
-sha256sums=('79b685d4107b0c5adc97d6063127349fc392cf18ccc4c560cf0951be3f0bc128'
+sha256sums=('8cd6d9985142cc689d0b9078e6790ec96e247acd9068116e0a9bd83b1f4fb1fb'
             '953f45fecbe08cb5cfd700aadfca9c5db548d1f52b69c35716d79092b03c25e0')
 conflicts=('pacgem-git')
 
