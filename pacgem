@@ -224,7 +224,7 @@ module Pacgem
     private
 
     def build_name(gemname)
-      "#{ruby_package}-#{gemname.downcase.sub(/^ruby-/, '').tr('_', '-')}"
+      "#{ruby_package}-#{gemname.downcase.tr('_', '-')}"
     end
 
     def download
