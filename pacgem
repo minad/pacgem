@@ -327,7 +327,11 @@ module Pacgem
         logger.msg2 'Pacman is currently in use, please wait.'
         sleep 1 while File.exists?(lockfile)
       end
-      cmd = "pacman --as#{explicit? ? 'explicit' : 'deps'} -U #{pkgfile.shellescape}"
+      if options[:noconfirm]
+        cmd = "pacman --as#{explicit? ? 'explicit' : 'deps'} -U --noconfirm #{pkgfile.shellescape}"
+      else
+        cmd = "pacman --as#{explicit? ? 'explicit' : 'deps'} -U #{pkgfile.shellescape}"
+      end
       if which?('sudo')
         system("sudo #{cmd}")
       else
@@ -575,6 +579,10 @@ Options:
 
       opts.on('--trace', :NONE, 'Show a full traceback on error') do
         @options[:trace] = true
+      end
+
+      opts.on('--noconfirm', :NONE, 'Bypass any and all “Are you sure?” messages') do
+        @options[:noconfirm] = true
       end
 
       opts.on_tail('-h', '--help', 'Display help and exit') do

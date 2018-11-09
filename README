@@ -44,6 +44,9 @@ DESCRIPTION
        -V, --version
               Display version and exit
 
+       --noconfirm
+               Bypass any and all “Are you sure?” messages. It’s not a good idea to do this unless you want to run pacman from a script.
+
 EXAMPLES
        pacgem --create slim       Create ruby-slim package in the directory ./ruby-slim
 
